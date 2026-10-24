@@ -1,8 +1,6 @@
 """Extract resume text in memory without saving uploaded documents."""
 from io import BytesIO
 
-from pypdf import PdfReader
-
 from matching import MAX_EXPERIENCE_CHARS
 
 MAX_RESUME_BYTES = 5 * 1024 * 1024
@@ -16,6 +14,12 @@ def extract_resume(data):
         raise ValueError('Upload a PDF resume smaller than 5 MB.')
     if not data.lstrip().startswith(b'%PDF-'):
         raise ValueError('This file is not a PDF. Export your resume as a PDF and try again.')
+    try:
+        from pypdf import PdfReader
+    except ModuleNotFoundError as exc:
+        if exc.name != 'pypdf':
+            raise
+        raise ValueError('PDF resume uploads are unavailable because the server is missing pypdf. Redeploy with the updated requirements.txt, or enter your experience below.') from None
     try:
         reader = PdfReader(BytesIO(data))
         if reader.is_encrypted:

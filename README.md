@@ -36,6 +36,12 @@ An authorization error indicates key/model access; a usage-limit error indicates
 quota or billing; an unreachable-service error indicates outbound connectivity
 or a timeout. Live generation uses your API account.
 
+If the deployed app reports `No module named 'pypdf'`, deploy the latest commit
+on **simulation** with the updated root `requirements.txt`. Use **Deploy**, rather
+than only restarting the running app: the deployment build installs dependencies.
+Check the build logs for `pypdf`. Both root and nested requirements declare it.
+The app can open without the PDF library, but resume uploads need it installed.
+
 Local regression test (does not contact the AI service):
 
 ```sh
@@ -49,7 +55,7 @@ References: [Databricks secret resources](https://docs.databricks.com/aws/en/dev
 
 Use this repository's root folder as the app's **Source code path**, then deploy.
 The root `app.yaml` starts `streamlit run learningcurve/app.py`, and the root
-`requirements.txt` installs the dependencies from `learningcurve/requirements.txt`.
+`requirements.txt` declares the same dependencies as `learningcurve/requirements.txt`.
 Keep the entire `learningcurve` folder in the deployed source.
 
 If Databricks reports **No command to run and no Python file found**, check that

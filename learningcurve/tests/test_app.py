@@ -1,6 +1,7 @@
 from pathlib import Path
 from io import BytesIO
 from unittest.mock import patch
+import sys
 from streamlit.testing.v1 import AppTest
 
 APP = Path(__file__).resolve().parents[1] / 'app.py'
@@ -104,3 +105,17 @@ def test_invalid_resume_preserves_typed_experience():
     assert not app.exception
     assert app.error
     assert app.text_area[0].value == 'Installed software'
+
+
+def test_app_opens_and_preserves_experience_without_pypdf():
+    with patch.dict(sys.modules, {'pypdf': None}):
+        app = AppTest.from_file(str(APP), default_timeout=30).run()
+        assert not app.exception
+        click(app, 'Build my learning path')
+        app.text_area[0].set_value('Installed software').run()
+        click(app, 'Add resume')
+        with patch('streamlit.file_uploader', return_value=BytesIO(b'%PDF-1.7\n')):
+            app.run()
+        assert not app.exception
+        assert any('server is missing pypdf' in error.value for error in app.error)
+        assert app.text_area[0].value == 'Installed software'
