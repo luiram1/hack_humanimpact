@@ -110,7 +110,20 @@ def assess(state, explanation, mission=None):
     if not all(writing.values()):
         missing.append('Explain the action taken and how you checked the outcome.' if rules else 'Explain the cache action and how you checked portal access.')
     improvement = 'Explain which observations supported your action and how you verified the outcome.' if rules else 'Explain why the DNS discrepancy supports the chosen action.'
+    observed = scope.intersection(state.seen)
+    missing_scope = scope - observed
+    action_ids = set(mission['actions']) if mission else {'refresh', 'firewall', 'password'}
+    first_change = next((i for i, h in enumerate(state.history) if h['action'] in action_ids or h['action'] == 'accept'), len(state.history))
+    scope_before = {h['action'] for h in state.history[:first_change]}.intersection(scope)
+    scope_feedback = f'Collected {len(observed)} of {len(scope)} scope observations; {len(scope_before)} before the first intervention. '
+    if missing_scope:
+        scope_feedback += 'Still needed: ' + '; '.join(mission['evidence'][k]['label'] if mission else k for k in sorted(missing_scope)) + '.'
+    elif scope_before != scope:
+        scope_feedback += 'You eventually established scope, but gather these comparisons before changing settings next time.'
+    else:
+        scope_feedback += 'You established scope before intervention. Scope narrows the investigation; diagnostic evidence is still needed to justify a cause.'
     return {'criteria': criteria, 'writing': writing, 'explanation': explanation,
+            'scope_feedback': scope_feedback,
             'history': deepcopy(state.history), 'dialogue': deepcopy(state.dialogue),
             'improvement': missing[0] if missing else improvement,
             'next_step': missing[0] if missing else 'Practice explaining this fix without unexplained acronyms.'}

@@ -3,3 +3,6 @@ pandas==2.3.3
 plotly==6.9.0
 jsonschema>=4.23,<5
 pypdf==6.21.2
+databricks-sdk>=0.40,<1
+requests>=2.32,<3
+tzdata>=2025.1

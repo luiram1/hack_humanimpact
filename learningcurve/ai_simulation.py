@@ -3,6 +3,7 @@ import json
 import os
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
+import gateway
 
 from jsonschema import Draft202012Validator, ValidationError
 
@@ -12,10 +13,12 @@ from simulation import (SCENARIO_SCHEMA, SimulationError, build_mission, fingerp
 
 
 def ai_available():
-    return bool(os.environ.get('OPENAI_API_KEY', '').strip())
+    return gateway.configured() or bool(os.environ.get('OPENAI_API_KEY', '').strip())
 
 
 def request_json(name, schema, instructions, context):
+    if gateway.configured():
+        return gateway.request_json(name, schema, instructions, context)
     key = os.environ.get('OPENAI_API_KEY', '').strip()
     if not key:
         raise SimulationError('AI shifts are not configured. Set OPENAI_API_KEY on the app server to enable them.')
@@ -135,3 +138,42 @@ def ask_customer(state, mission, question, client=None):
         interact(state, chosen, mission)
     state.dialogue.append({'question': question, 'reply': text, 'observation': fact, 'evidence_id': chosen})
     return text
+
+
+def ask_coach(state, mission, question, client=None):
+    if not question.strip() or len(question) > 1000:
+        raise SimulationError('Ask a question between 1 and 1,000 characters.')
+    if len(state.coach_dialogue) >= 20:
+        raise SimulationError('The coach has reached this attempt’s 20-question limit. Continue with the diagnostic actions.')
+    reply = (client or request_json)('coach_reply', obj({'reply': string(1800)}),
+        'Coach a learner in a fictional IT support simulation. Use only revealed observations. Give one useful hint or guiding question, not an unobserved diagnosis. Never invent logs, perform actions, award credit, or give executable commands. The customer role is separate from you.',
+        {'scenario': mission['scenario'], 'observations': state.history[-25:],
+         'recent_conversation': state.coach_dialogue[-6:], 'question': question})
+    if not isinstance(reply.get('reply'), str) or not reply['reply'].strip() or len(reply['reply']) > 1800:
+        raise SimulationError('The coach returned an invalid reply. Try again.')
+    state.coach_dialogue.append({'question': question, 'reply': reply['reply']})
+    return reply['reply']
+
+
+def review_explanation(attempt, client=None):
+    return (client or request_json)('explanation_review', obj({'reply': string(2400)}),
+        'Review a fictional support explanation against the recorded actions. Identify accuracy, unsupported claims, clarity and missing verification. Quote supporting text and give one specific improvement. Keyword checks are separate. Never override action credit or infer employability or professional competence.',
+        {k: attempt[k] for k in ('explanation', 'history', 'criteria', 'writing')})['reply']
+
+
+def suggest_experience(text, skills, client=None):
+    schema = {'type': 'object', 'properties': {'suggestions': {'type': 'array', 'maxItems': len(skills),
+              'items': obj({'id': {'type': 'string', 'enum': [s['id'] for s in skills]},
+                            'sentence': string(3000), 'explanation': string(600)})}},
+              'required': ['suggestions'], 'additionalProperties': False}
+    result = (client or request_json)('experience_review', schema,
+        'Suggest skill connections only for explicit experience. Quote an exact verbatim span from the text for each connection. Exclude negated or hypothetical claims. Do not infer proficiency. Return no suggestions for unrelated text.',
+        {'experience': text, 'skills': [{'id': s['id'], 'name': s['name']} for s in skills]})
+    seen, valid = set(), []
+    for row in result['suggestions']:
+        if row['id'] not in {s['id'] for s in skills} or not row['sentence'].strip() or row['sentence'] not in text:
+            raise SimulationError('AI suggested unsupported evidence. No evidence has been changed.')
+        if row['id'] not in seen:
+            valid.append({**row, 'explanation': 'AI suggestion: ' + row['explanation']})
+            seen.add(row['id'])
+    return valid

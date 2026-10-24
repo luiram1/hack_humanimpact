@@ -1,68 +1,30 @@
-# hack_humanimpact
-hackathon project repo
+# LearningCurve
 
-The Streamlit app is in [learningcurve](learningcurve/README.md). It supports
-optional AI-generated support shifts, customer dialogue, and session-local shift
-history. See [setup and configuration](learningcurve/README.md#dynamic-practice-shifts)
-to enable generation in Databricks or locally.
+IT support practice with experience review, optional PDF résumé input, generated simulations, customer dialogue, an AI practice assistant, criterion-level feedback, revisions, and session-local shift history.
 
-## Test on Databricks
+## Deploy this branch
 
-1. Store your OpenAI API key in a Databricks secret scope. In your app's
-   **App resources**, add a **Secret** pointing to that scope and secret, grant
-   **Can read**, and set the resource key to **`openai_api_key`**. The supplied
-   `app.yaml` maps this resource to `OPENAI_API_KEY`; no real key goes in GitHub.
-2. Commit and push these files to the branch your app deploys. For a Workspace
-   Git folder, **Pull** there too. Direct Git deployments read the selected branch
-   or commit when you deploy.
-3. Deploy using this repository's root as the **Source code path**. It now
-   contains `app.yaml` and `requirements.txt`, with `learningcurve/` beside them.
-   Deploying just `learningcurve/` also works with its own matching launch file.
-4. Open the app, choose **Try the demo**, review the skill suggestions, and
-   choose **See my learning path**. Expand **Generate a personalized shift**,
-   choose a topic, and press **Generate a new shift**.
-5. Ask the customer a question, check the recorded observation, investigate,
-   choose an action, verify, and submit for feedback. Generate another shift
-   and confirm the previous results appear in **Shift history**.
+1. In Databricks App resources add GPT OSS 120B (`system.ai.gpt-oss-120b`), permission **Can execute**, resource key **model**.
+2. Deploy From Git, branch **codex/learningcurve-ai-updates**. Source code path can be **learningcurve** or the repository root: both have matching launch/dependency files.
+3. The app uses the app service principal and `DATABRICKS_MODEL`; no OpenAI API-key secret is required by either launch file.
+4. Start with **Build my learning path**. Try profile suggestions, the built-in shift, the assistant, then a generated shift and its customer dialogue. Model responses are validated but may still be mistaken.
+5. Profile also has **Schedule this practice in Google Calendar**. This opens a draft the user saves in Google Calendar; it does not automatically write events or read availability.
 
-Both launch files bind Streamlit to the Databricks-assigned port. They expect the
-`openai_api_key` resource to exist before deployment. To deploy the built-in shift
-without AI, remove the `OPENAI_API_KEY` entry from the selected `app.yaml`; local
-Streamlit runs still work without a key. `.env` files are not loaded automatically.
+See [integration and Calendar API guidance](learningcurve/INTEGRATIONS.md) for complete setup, data boundaries, and the OAuth steps needed for direct Calendar API access.
 
-The app server needs outbound HTTPS access to `api.openai.com`, and the API key
-needs access to `gpt-4o-mini` (or change `OPENAI_MODEL` in the selected launch file).
-An authorization error indicates key/model access; a usage-limit error indicates
-quota or billing; an unreachable-service error indicates outbound connectivity
-or a timeout. Live generation uses your API account.
+Progress is session-only. There is no demo start or app download feature. Existing résumé upload and simulation features from main are preserved. Do not merge into main until you have tested this branch in your workspace.
 
-If the deployed app reports `No module named 'pypdf'`, deploy the latest commit
-on **simulation** with the updated root `requirements.txt`. Use **Deploy**, rather
-than only restarting the running app: the deployment build installs dependencies.
-Check the build logs for `pypdf`. Both root and nested requirements declare it.
-The app can open without the PDF library, but resume uploads need it installed.
+## Local development
 
-Local regression test (does not contact the AI service):
+Use Python 3.11 or 3.12. Install requirements.txt and pytest, then run:
 
 ```sh
-.venv/bin/python -m pytest learningcurve/tests/test_simulation.py -q
+python -m pytest learningcurve/tests -q
+python -m streamlit run learningcurve/app.py
 ```
 
-References: [Databricks secret resources](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/secrets),
-[Git deployments](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/deploy).
+For local built-in practice no model credentials are needed. For Databricks AI, use supported SDK authentication and set DATABRICKS_MODEL to your model service name. Do not put tokens or secrets in Git.
 
-## Run in Databricks Apps
+## Verification
 
-Use this repository's root folder as the app's **Source code path**, then deploy.
-The root `app.yaml` starts `streamlit run learningcurve/app.py`, and the root
-`requirements.txt` declares the same dependencies as `learningcurve/requirements.txt`.
-Keep the entire `learningcurve` folder in the deployed source.
-
-If Databricks reports **No command to run and no Python file found**, check that
-the selected source folder contains `app.yaml` and `requirements.txt` directly,
-with the `learningcurve` folder beside them. Upload or sync the updated files and
-redeploy; restarting an older deployment does not include these changes.
-
-You can also deploy the `learningcurve` folder itself. It has its own `app.yaml`
-and `requirements.txt` for that layout. See [the app README](learningcurve/README.md)
-for data preparation and local setup.
+64 tests passed locally: résumé handling, generated simulations and revision/history, full Streamlit journey, budget selection, calendar UTC conversion and DST rejection, coach state isolation, and mocked Unity Gateway authentication/schema validation. No live model calls or Google Calendar saves were performed. The app has not been redeployed by this change.

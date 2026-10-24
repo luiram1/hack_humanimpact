@@ -35,7 +35,7 @@ def test_resume_over_old_limit_is_not_truncated(resume_pdf):
     (b'not a PDF', 'not a PDF'),
     (b'%PDF-broken', 'could not be read'),
     (b'%PDF-' + b'x' * MAX_RESUME_BYTES, '5 MB'),
-])
+], ids=['empty', 'not-pdf', 'broken-pdf', 'too-large'])
 def test_invalid_uploads(data, message):
     with pytest.raises(ValueError, match=message):
         extract_resume(data)
