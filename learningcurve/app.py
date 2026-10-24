@@ -16,6 +16,7 @@ from calendar_tools import calendar_link
 from datetime import datetime, time
 from zoneinfo import ZoneInfo
 from ai_simulation import ask_coach, review_explanation, suggest_experience
+from careers import catalog, career_for, switch_career, IT
 
 st.set_page_config(page_title='LearningCurve', page_icon='🌱', layout='wide')
 career = content('career')
@@ -24,6 +25,9 @@ if 'journey' not in st.session_state:
     st.session_state.journey = initial_journey()
     st.session_state.page = 'Welcome'
 j = st.session_state.journey
+career = career_for(j.get('profile', {}).get('onet', IT))
+is_it = career['onet'] == IT
+supports_simulation = bool(career['skills'])
 mission = j.get('active_scenario') or content('mission')
 
 def go(page):
@@ -46,11 +50,14 @@ def selected_resources():
 
 def new_shift_controls():
     st.subheader('Try a new shift')
-    st.write('Generate a fresh customer problem, diagnostic clues, and possible actions tailored to your practice needs.')
+    st.write('Generate a fictional workplace problem for ' + career['title'] + ', with evidence and actions tailored to your practice needs.')
     available = ai_available()
     if not available:
-        st.info('Personalized shifts are not enabled yet. You can practice with the built-in support shift.')
-    topic = st.selectbox('Practice topic', ['Surprise me', 'Network access', 'Printer support', 'Account access', 'Suspicious email'], key='shift_topic')
+        st.info('Connect the model resource to generate a shift.' + (' The built-in IT shift is available.' if is_it else ' Career skill exploration remains available.'))
+    topics = ['Surprise me', 'Network access', 'Printer support', 'Account access', 'Suspicious email'] if is_it else ['Surprise me', 'Document consistency', 'Planning and prioritization', 'Stakeholder communication']
+    topic = st.selectbox('Practice topic', topics, key='shift_topic_' + career['onet'])
+    if not is_it:
+        st.caption('AI-generated practice, not expert-reviewed training. High-stakes careers use administrative and communication tasks only.')
     difficulty = st.selectbox('Shift difficulty', ['Automatic', 'Guided', 'Standard', 'Challenge'], key='shift_difficulty')
     st.caption('Generation uses your confirmed skills, practice time, and previous feedback. Your experience description is not sent. Customer questions are sent to the AI service when you ask them; keep personal details out of the conversation.')
     unfinished = bool((j['mission'].history or j['mission'].dialogue or j['draft'].strip()) and not j['attempts']) or (j['revision_started'] and len(j['attempts']) == 1)
@@ -102,6 +109,8 @@ with st.sidebar:
         disabled = page not in ('Welcome', 'Profile', 'Why these skills?') and not j['profile']
         if page == 'Feedback' and not j['attempts']:
             disabled = True
+        if page in ('Mission', 'Feedback', 'Shift history') and not supports_simulation:
+            disabled = True
         button(page, page, key='nav_' + page, disabled=disabled, use_container_width=True)
     st.divider()
     st.caption('Progress lasts for this session only. It does not persist across devices or server restarts.')
@@ -118,11 +127,62 @@ except (ValueError, OSError) as exc:
     st.stop()
 
 page = st.session_state.page
+if not supports_simulation and page in ('Mission', 'Feedback', 'Shift history'):
+    st.info('Career-specific simulations are not available for this occupation yet. Explore its skills and add your own evidence.')
+    button('Explore my learning path', 'Learning path')
+    st.stop()
+
+if not is_it and page == 'Mission' and not j.get('active_scenario'):
+    st.title('Your first ' + career['title'] + ' practice shift')
+    new_shift_controls()
+    st.stop()
+
+if not is_it and page in ('Learning path', 'Resources', 'Why these skills?'):
+    entry = catalog()['occupations'][career['onet']]
+    st.title(career['title'])
+    st.caption('Source-based skill exploration · AI-generated workplace practice · No expert-reviewed career curriculum')
+    st.write('Data Source: Lightcast, 2026 · Massachusetts · 2025 full year (12 months)')
+    if not entry['skills']:
+        st.info('No matching Massachusetts skill records in the selected 2025 full-year dataset. This does not mean there are no jobs or skill requirements for this occupation.')
+        button('Choose another career', 'Profile')
+        st.stop()
+    if page == 'Why these skills?':
+        source = pd.DataFrame(entry['skills'])
+        st.caption(f"Denominator: {source.iloc[0]['job_postings']:,.0f} occupational postings. Skills overlap; percentages must not be summed. Source version: {catalog()['version']}.")
+        st.plotly_chart(px.bar(source.nlargest(15, 'pct_postings'), x='pct_postings', y='skill_name', orientation='h',
+                              labels={'pct_postings': 'Share of occupational postings (%)', 'skill_name': 'Source skill'}),
+                        use_container_width=True, config={'displayModeBar': False})
+        st.table(source[['skill_name', 'skill_type', 'pct_postings', 'job_postings', 'confidence_flag']])
+        st.caption('Certification rows describe advertised demand. They are not credentials earned by using this app. No GenAI trend for this occupation was supplied in the career export.')
+        st.write(LIMITATIONS)
+    else:
+        evidence = confirmed(j)
+        shares = {r['skill_id']: r['pct_postings'] for r in entry['skills']}
+        st.caption('Exploration heuristic: up to six highest-share non-certification skills; unconfirmed skills first. This is not a complete curriculum or a readiness score.')
+        for skill in prioritize(career['skills'], evidence, shares):
+            with st.container(border=True):
+                st.subheader(skill['name'])
+                st.write(skill['why'])
+                own = [e for e in evidence if e['id'] == skill['id']]
+                st.write('Experience confirmed by user' if own else 'Not yet demonstrated')
+                for item in own:
+                    st.text(item['sentence'])
+                st.write('Original reflection activity: ' + skill['activity'])
+        if page == 'Resources':
+            st.caption('Free reflection activity, estimated 15 minutes. No job-specific technical procedure or credential instruction is supplied.')
+            j['resource_notes'] = st.text_area('Career reflection notes', value=j['resource_notes'], max_chars=3000)
+        else:
+            button('Review my evidence', 'Evidence review')
+            button('Try a reflection activity', 'Resources')
+            if supports_simulation:
+                button('Open career practice shift', 'Mission', type='primary')
+    st.stop()
+
 if page == 'Welcome':
     st.caption('LEARNINGCURVE / YOUR FIRST NEXT STEP')
     st.title('Your first opportunity starts with a next step.')
     st.markdown('Recognize the experience you already have. Practice a relevant skill. Build something you can explain.')
-    st.info('Guided career practice, not a hiring assessment. Start with IT support; no résumé or personal identifiers needed.')
+    st.info('Explore 972 careers. Generate workplace practice where skill data is available, or start with the built-in IT support shift. This is not a hiring assessment.')
     button('Build my learning path', 'Profile', type='primary')
     st.divider()
     for col, title, text in zip(st.columns(3), ['01 · Recognize', '02 · Practice', '03 · Take a next step'],
@@ -133,8 +193,18 @@ if page == 'Welcome':
 
 elif page == 'Profile':
     st.title('Start with what you have done')
-    st.selectbox('Target career', [career['title']])
-    st.caption('IT support is the supported path. Coursework, work, projects, volunteering and personal responsibilities can all provide relevant examples.')
+    choices = list(catalog()['occupations'])
+    selected_code = st.selectbox('Target career — type to search', choices,
+                                index=choices.index(j.get('career_draft', career['onet'])),
+                                format_func=lambda code: catalog()['occupations'][code]['name'] + (' · Simulation available' if code == IT else ''))
+    j['career_draft'] = selected_code
+    if selected_code != IT:
+        st.info('Explore this career’s skills and generate fictional workplace practice. High-stakes roles use administrative and communication tasks only; scenarios are not expert-reviewed.')
+        if not catalog()['occupations'][selected_code]['skills']:
+            st.warning('No matching Massachusetts skill records in the selected 2025 full-year dataset.')
+    if selected_code != career['onet']:
+        st.caption('Continuing switches careers and retains your previous career’s progress separately. Your current background and preferences will be used for the selected career.')
+    st.caption('Coursework, work, projects, volunteering and personal responsibilities can all provide relevant examples.')
     profile = j['profile']
     # Persist drafts outside widget state, which Streamlit removes when navigating away.
     if 'experience_draft' not in j:
@@ -177,7 +247,7 @@ elif page == 'Profile':
         clock = st.time_input('Practice start time', value=j.get('calendar_clock', time(18, 0)))
         j['calendar_day'], j['calendar_clock'] = day, clock
         try:
-            link = calendar_link(day, clock, zone, minutes)
+            link = calendar_link(day, clock, zone, minutes, catalog()['occupations'][selected_code]['name'])
             st.write(f'{day} at {clock.strftime("%H:%M")} · {zone} · {minutes} minutes')
             st.link_button('Open in Google Calendar', link)
             st.caption('The event is not saved until you click Save in Google Calendar. Opening the draft repeatedly may create duplicates if you save each one.')
@@ -185,19 +255,37 @@ elif page == 'Profile':
             st.error(str(exc))
     st.caption('Review skill suggestions connects specific phrases in your background to skills. You can confirm, reject, edit, or ask AI for additional suggestions next.')
     if st.button('Review skill suggestions', type='primary'):
+        if not budgets:
+            st.error('Select at least one budget option.')
+            st.stop()
+        if selected_code != career['onet']:
+            st.session_state.journey = switch_career(j, selected_code)
+            j = st.session_state.journey
+            career = career_for(selected_code)
+            profile = j['profile']
+            for key in list(st.session_state):
+                if key.startswith('decision_'):
+                    del st.session_state[key]
         if experience != profile.get('experience'):
             j['matches'] = suggest(experience, career['skills'])
             j['decisions'] = {}
         if not budgets:
             st.error('Select at least one budget option.')
             st.stop()
-        j['profile'] = {'experience': experience, 'minutes': minutes, 'free_only': 'Paid' not in budgets, 'budgets': budgets}
+        j['profile'] = {'experience': experience, 'minutes': minutes, 'free_only': 'Paid' not in budgets, 'budgets': budgets, 'onet': selected_code}
+        j['experience_draft'] = experience
         go('Evidence review')
 
 elif page == 'Evidence review':
     st.title('You decide which connections fit')
     st.caption('These are phrase-based suggestions. Confirmation records a self-reported connection, not verified proficiency.')
     names = {s['id']: s['name'] for s in career['skills']}
+    st.caption('Selected career: ' + career['title'])
+    if not names:
+        st.info('No non-certification skill rows are available for evidence matching in this export. Choose another career or inspect its data coverage.')
+        button('Choose a career', 'Profile')
+        button('See data coverage', 'Why these skills?')
+        st.stop()
     button('Edit my background', 'Profile')
     with st.expander('Ask AI to suggest skill connections'):
         st.caption('This sends your background text, including any imported résumé text, to the configured model. Remove personal details before requesting a review. Suggestions still need your confirmation.')

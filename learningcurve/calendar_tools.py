@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-def calendar_link(day, clock, zone, minutes):
+def calendar_link(day, clock, zone, minutes, career='IT support'):
     if minutes not in (15, 30, 60):
         raise ValueError('Choose 15, 30, or 60 minutes.')
     try:
@@ -19,6 +19,6 @@ def calendar_link(day, clock, zone, minutes):
     utc = start.astimezone(timezone.utc)
     end = utc + timedelta(minutes=minutes)
     return 'https://calendar.google.com/calendar/render?' + urlencode({
-        'action': 'TEMPLATE', 'text': 'LearningCurve: IT support practice',
+        'action': 'TEMPLATE', 'text': 'LearningCurve: ' + career + ' practice',
         'dates': utc.strftime('%Y%m%dT%H%M%SZ') + '/' + end.strftime('%Y%m%dT%H%M%SZ'),
-        'ctz': zone, 'details': f'{minutes} minutes of guided IT support practice. Return to LearningCurve to continue. Simulated practice, not employment experience.'})
+        'ctz': zone, 'details': f'{minutes} minutes of career learning and reflection. Return to LearningCurve to continue. Learning activity, not employment experience.'})

@@ -58,7 +58,13 @@ def request_json(name, schema, instructions, context):
         raise SimulationError('The AI service returned an unreadable response. Please try again.') from None
 
 
-GENERATION_INSTRUCTIONS = '''Create a new, internally consistent, fictional IT support simulation.
+GENERATION_INSTRUCTIONS = '''Create a new, internally consistent, fictional workplace simulation for occupation_title.
+Use source_skills and practice_skill_ids to select a relevant task for this occupation.
+Never substitute an IT support problem for another occupation. A customer can be a fictional colleague or stakeholder.
+Follow practice_boundary strictly. For healthcare, law, finance, public safety, military, and hazardous trades,
+use ONLY low-stakes administrative coordination, scheduling, document consistency or communication tasks.
+Do not instruct clinical treatment, legal judgment, investment decisions, emergency actions or physical operations.
+The issue, correct outcome and feedback must be entirely supported by the fictional evidence, not unstated domain expertise.
 The scenario must be genuinely different from recent_situations, not just rename a customer.
 Use preferences to choose topic, time, and difficulty. Guided: simple clue labels and explicit
 observations. Standard: more comparative diagnostics. Challenge: more plausible distractor actions
@@ -146,7 +152,7 @@ def ask_coach(state, mission, question, client=None):
     if len(state.coach_dialogue) >= 20:
         raise SimulationError('The coach has reached this attempt’s 20-question limit. Continue with the diagnostic actions.')
     reply = (client or request_json)('coach_reply', obj({'reply': string(1800)}),
-        'Coach a learner in a fictional IT support simulation. Use only revealed observations. Give one useful hint or guiding question, not an unobserved diagnosis. Never invent logs, perform actions, award credit, or give executable commands. The customer role is separate from you.',
+        'Coach a learner in a fictional workplace simulation. Use only revealed observations. Give one useful hint or guiding question, not an unobserved solution. Never invent evidence, perform actions, award credit, or give executable commands. Stay within administrative planning and communication for high-stakes roles; no clinical, legal, investment or hazardous operational advice. The stakeholder role is separate from you.',
         {'scenario': mission['scenario'], 'observations': state.history[-25:],
          'recent_conversation': state.coach_dialogue[-6:], 'question': question})
     if not isinstance(reply.get('reply'), str) or not reply['reply'].strip() or len(reply['reply']) > 1800:

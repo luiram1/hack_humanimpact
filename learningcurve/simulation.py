@@ -95,8 +95,10 @@ def build_mission(raw, preferences):
 
 
 def practice_context(journey, topic='Surprise me', difficulty='Automatic'):
+    from careers import career_for, IT
+    career = career_for(journey['profile'].get('onet', IT))
     known = sorted({e['id'] for e in confirmed(journey)})
-    skills = [s['id'] for s in content('career')['skills']]
+    skills = [s['id'] for s in career['skills']]
     previous = list(journey.get('completed_shifts', []))
     if journey['attempts']:
         previous.append({'attempts': journey['attempts']})
@@ -106,6 +108,9 @@ def practice_context(journey, topic='Surprise me', difficulty='Automatic'):
         difficulty = ('Challenge' if latest and all(latest['criteria'].values())
                       else 'Guided' if gaps or len(known) < 2 else 'Standard')
     return {'topic': topic, 'difficulty': difficulty,
+            'occupation_code': career['onet'], 'occupation_title': career['title'],
+            'source_skills': [{'id': s['id'], 'name': s['name']} for s in career['skills']],
+            'practice_boundary': 'Use fictional, reversible workplace administration, planning, communication or document-checking tasks. No diagnosis, treatment, legal advice, investment advice, weapons, emergency response or hazardous physical procedures. High-stakes occupations must use administrative coordination only.',
             'minutes': journey['profile'].get('minutes', 30),
             'confirmed_skill_ids': known, 'practice_skill_ids': [s for s in skills if s not in known],
             'practice_gaps': gaps,
