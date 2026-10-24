@@ -19,3 +19,9 @@ High-stakes careers are instructed to use fictional administrative coordination,
 67 local tests passed, including occupation coverage, isolated/restored career state, occupation-specific generation context, non-IT UI gating and all previous regression tests. Live inference was not performed. No claim is made that all 895 careers have been individually evaluated.
 
 Deploy Git branch `codex/learningcurve-ai-updates` with source path `learningcurve` (or the repository root, which also has launch files). Keep the model resource key `model`. Rebuild/redeploy to include the new career snapshot. The previous GenAI-unit uncertainty applies to the old IT snapshot; the new career export contains skill shares, not occupation-specific GenAI time series.
+
+## Final Next steps section
+
+The final sidebar section combines feedback-based next actions, up to five source-ranked certification candidates, curated IT resources (or an honest unavailable state for other careers), a fictional project prompt, notes, Calendar scheduling and practice navigation. Credential names and posting shares come from the career snapshot. Issuers, eligibility and current costs are not verified: links explicitly open a web search for the issuer, not a purported official course page. Free-only users are warned that credential exams may cost money. No downloads were added.
+
+Validation: 69 tests passed, including career-specific credential selection and rendering the final section without model access. Live external links, model inference and Databricks deployment were not exercised.
