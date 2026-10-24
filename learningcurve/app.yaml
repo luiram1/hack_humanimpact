@@ -1,1 +1,7 @@
-command: ['streamlit', 'run', 'app.py']
+# Before deploying, add a Databricks App Secret resource with key openai_api_key.
+command: ["python", "-m", "streamlit", "run", "app.py", "--server.address", "0.0.0.0", "--server.port", "$DATABRICKS_APP_PORT"]
+env:
+  - name: OPENAI_API_KEY
+    valueFrom: openai_api_key
+  - name: OPENAI_MODEL
+    value: gpt-4o-mini

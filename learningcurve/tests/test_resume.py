@@ -1,8 +1,18 @@
 import pytest
+import importlib
+import sys
 
 from matching import suggest
 from models import content
 from resume import extract_resume, MAX_RESUME_BYTES
+
+
+def test_missing_pdf_dependency_does_not_prevent_module_import(monkeypatch):
+    monkeypatch.setitem(sys.modules, 'pypdf', None)
+    import resume
+    importlib.reload(resume)
+    with pytest.raises(ValueError, match='server is missing pypdf'):
+        resume.extract_resume(b'%PDF-1.7\n')
 
 
 def test_all_resume_pages_and_unpunctuated_bullets_are_used(resume_pdf):

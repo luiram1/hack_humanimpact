@@ -4,6 +4,11 @@ A complete Streamlit career-practice application for IT support. The existing St
 
 ## Start in Databricks
 
+For GitHub deployments, follow the [Databricks testing walkthrough](../README.md#test-on-databricks).
+Both the repository root and this directory contain launch and dependency files.
+Both supplied launch files now expect an app Secret resource named `openai_api_key`
+and bind Streamlit to `DATABRICKS_APP_PORT`.
+
 You can deploy the entire repository using its root `app.yaml` and
 `requirements.txt`; set the app's **Source code path** to the repository root.
 The steps below describe deploying just the `learningcurve` directory instead.
@@ -12,7 +17,7 @@ configuration and requirements file.
 
 1. Upload this entire `learningcurve` directory into a Databricks Workspace folder or sync it through your Git folder. Keep the directory structure intact. These are Python **files**, not individual notebook cells. Only `databricks_prepare.py` is a notebook source file.
 2. Create a Databricks App using the workspace's Apps interface. Choose this `learningcurve` folder as its source, with `app.py`, `requirements.txt`, and `app.yaml` at the source root. Deploy the source. Databricks installs the requirements and runs `streamlit run app.py`.
-3. Open the app URL and select **Try the demo**. It runs without table credentials or external AI services. Until you prepare real data, every evidence chart is explicitly illustrative.
+3. Add the `openai_api_key` Secret resource before deploying, as described below. Open the app URL and select **Try the demo**. The built-in demo itself makes no AI calls and needs no table credentials; **Generate a new shift** uses the configured AI service. Charts use the included prepared snapshot, or the clearly labeled illustrative fixture when no snapshot exists.
 4. Keep app access restricted to the intended workspace users. No public deployment has been performed by this project.
 
 Databricks Apps runs a web application, separately from notebook compute. Pasting `app.py` into a notebook does not launch the intended UI. Apps availability depends on workspace features and permissions; if your workspace does not offer Apps, ask the workspace administrator about availability or run locally using the instructions below.
@@ -49,7 +54,72 @@ Replace the uppercase arguments and verify the version and units. Required files
 
 Inspect `lc_human_edge_data_dictionary_2026_10_12.xlsx` yourself to confirm IDs, units and geography labels. Metadata and specialized LOT tables are not required or joined by this MVP. The preparation preserves available source columns, selects the latest complete profile year for skills, validates source keys, and never aggregates duplicate posting counts. 2026 must have nine months and is labeled January–September, partial year. Missing CSVs fail preparation clearly; the app can still run using the separate illustrative fixture. Invalid prepared JSON stops the app instead of substituting demo values.
 
-## Local run and tests
+## Dynamic practice shifts
+
+The original DNS shift remains available without an AI service. For genuinely generated
+situations, configure `OPENAI_API_KEY` in the app server environment and optionally
+`OPENAI_MODEL` (default: `gpt-4o-mini`). The model must support the Responses API and
+strict structured outputs. Example variable names are in `.env.example`; files named
+`.env` are not loaded automatically. Keep real keys out of GitHub.
+
+Locally, set these variables in your shell before launching Streamlit. In Databricks,
+bind a secret resource to `OPENAI_API_KEY` in the app environment, then redeploy. An
+administrator must allow outbound access to `https://api.openai.com/v1/responses`.
+
+For Databricks, add a **Secret** resource to the app pointing to your stored API key,
+give that resource the key `openai_api_key`, and grant **Can read**. The supplied
+root and nested `app.yaml` files already contain this block:
+
+```yaml
+env:
+  - name: OPENAI_API_KEY
+    valueFrom: openai_api_key
+  - name: OPENAI_MODEL
+    value: gpt-4o-mini
+```
+
+Use the same resource key in the app and `valueFrom`. Add the resource before
+deploying that configuration. For a built-in-only Databricks deployment, remove the
+`OPENAI_API_KEY` entry from the selected launch file so no Secret resource is required.
+See [Databricks secret resources](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/secrets).
+
+From **Learning path**, expand **Generate a personalized shift**. Choose a topic and
+difficulty, then **Generate a new shift**. The service creates the customer problem,
+diagnostic observations, action choices and outcomes, hint, and writing checks; it does
+not just select from a fixed scenario library. Automatic difficulty uses confirmed
+experience and the most recent feedback. New requests include recent situations to
+discourage repetition, and exact repeated causes/facts are rejected. Semantic novelty
+is model-dependent, so similar problem types can recur.
+
+Inside a generated shift, ask the customer questions in your own words. The app maps
+questions to the scenario's observations or verification step, then generates a reply
+using that observation and the current resolution state. The recorded observation is
+shown alongside the reply. Diagnostic buttons remain available if chat fails. The
+customer does not invent new scoring rules or silently change the underlying cause;
+the same generated facts and rules stay in place for a revision.
+
+After submitting feedback, **Try a new shift** generates another situation and archives
+the previous attempts. **Shift history** and the work-sample download retain all completed
+shifts for this session. Finish an active attempt or revision before replacing it.
+Generation failures leave current progress intact; the built-in exercise is explicitly
+labeled and is never presented as newly AI-generated.
+
+Only confirmed skill IDs, practice time, selected topic/difficulty, criterion gaps, and
+recent fictional situations are sent for generation. The experience description is not
+sent. Customer questions and recent conversation are sent when you use customer chat.
+Requests use `store: false`; the app keeps no shared user-data files. Each shift allows
+up to 40 questions. Generation makes one API request; a question makes two (routing and
+reply), with 25-second timeouts per request. API charges and account limits apply.
+
+Generated structures, IDs, prerequisites, and the single resolving action are validated.
+Scoring is deterministic: evidence must precede the resolving action, verification must
+follow it, and later actions invalidate verification. Structural validation does not
+establish that every generated technical claim is correct. Scenarios and customer
+dialogue are AI-authored practice content, not expert-reviewed assessments.
+
+API format reference: [OpenAI structured outputs](https://developers.openai.com/api/docs/guides/structured-outputs).
+
+## Local setup
 
 Use Python 3.11 or 3.12. From this directory:
 
@@ -75,6 +145,8 @@ On **Start with what you have done**, choose **Add resume** to upload a PDF (up 
 | `matching.py` | Conservative phrase matches with exact original sentence spans; user confirmations |
 | `resume.py` | In-memory PDF resume extraction and upload validation |
 | `assessment.py` | Pure simulation transitions, action rubric and revision comparison |
+| `simulation.py` | Generated scenario contract, validation, personalization and shift history |
+| `ai_simulation.py` | Responses API requests, scenario generation and grounded customer dialogue |
 | `recommendations.py` | Budget, duration and skill filtering |
 | `export.py` | Markdown work sample without the background description |
 | `data_access.py` | Prepared snapshot loading and interpretation rules |
@@ -86,9 +158,9 @@ On **Start with what you have done**, choose **Add resume** to upload a PDF (up 
 | `app.yaml` | Databricks launch command |
 | `.streamlit/config.toml` | Theme and headless runtime setting |
 
-Session state contains experience, confirmation decisions, simulation state, and two immutable submitted attempt snapshots (original plus one revision). No shared file stores user data. Navigating does not restart a simulation. The reset control asks for confirmation. Core logic is independent of Streamlit.
+Session state contains experience, confirmation decisions, the active scenario, completed shifts, and up to two submitted attempt snapshots per shift (original plus one revision). No shared file stores user data. Navigating does not restart a simulation. The reset control asks for confirmation. Core logic is independent of Streamlit.
 
-The scenario is original and fictional. Reserved example domains and documentation IP addresses are used. No operating-system commands run. Refreshing the cache changes simulated state; the learner must separately test portal access. A successful action without prior scope and DNS evidence does not earn the supported-action criterion. Incorrect actions can be followed by recovery. The AI colleague is scripted, not an external model.
+The built-in scenario is original and fictional. No operating-system commands run. A successful action without prior evidence does not earn the supported-action criterion. Incorrect actions can be followed by recovery. The built-in colleague is scripted; generated shifts use an AI-authored colleague suggestion and live customer dialogue.
 
 ## Data and resource interpretation
 
@@ -100,7 +172,7 @@ Cloudflare's public DNS reading page was checked on 2026-10-24. Its assigned act
 
 - Progress is session-only and does not persist across devices or server restarts. Download the work sample and optional practice notes before leaving.
 - Phrase matching misses paraphrases and cannot verify truth. Evidence confirmation is self-report. Writing feedback checks limited content only and can misread negation or context.
-- Only IT support is implemented. No accounts, job scraping, LLM calls, or hiring-readiness scores. Resume uploads require text-based PDFs; built-in OCR is not included.
+- Only IT support is implemented. No accounts, job scraping, or hiring-readiness scores. Resume uploads require text-based PDFs; built-in OCR is not included. Optional generated shifts and customer dialogue require an AI API key; customer replies can contain model errors.
 - Prepared data is a deployment snapshot. The actual shared-table schema and source data have not been tested in your workspace.
 - Databricks deployment must be completed in your workspace; these files do not imply a deployment already exists.
 

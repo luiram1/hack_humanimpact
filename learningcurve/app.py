@@ -7,18 +7,21 @@ import streamlit as st
 from models import content, initial_journey, begin_revision
 from matching import suggest, confirmed, prioritize, MAX_EXPERIENCE_CHARS
 from resume import extract_resume
-from assessment import interact, assess, differences, RUBRIC
+from assessment import interact, assess, differences, rubric_for
+from ai_simulation import ai_available, generate_shift, ask_customer
+from simulation import practice_context, start_shift, shift_records, SimulationError
 from recommendations import recommend
 from data_access import load_data, skill_shares, LIMITATIONS
 from export import work_sample
 
 st.set_page_config(page_title='LearningCurve', page_icon='🌱', layout='wide')
-career, mission = content('career'), content('mission')
+career = content('career')
 resources = content('resources')['resources']
 if 'journey' not in st.session_state:
     st.session_state.journey = initial_journey()
     st.session_state.page = 'Welcome'
 j = st.session_state.journey
+mission = j.get('active_scenario') or content('mission')
 
 def go(page):
     st.session_state.page = page
@@ -37,10 +40,62 @@ def selected_resources():
     return recommend(resources, profile.get('minutes', 30), profile.get('free_only', True),
                      [s['id'] for s in career['skills']])
 
+
+def new_shift_controls():
+    st.subheader('Try a new shift')
+    st.write('Generate a fresh customer problem, diagnostic clues, and possible actions tailored to your practice needs.')
+    available = ai_available()
+    if not available:
+        st.info('Personalized shifts are not enabled yet. You can practice with the built-in support shift.')
+    topic = st.selectbox('Practice topic', ['Surprise me', 'Network access', 'Printer support', 'Account access', 'Suspicious email'], key='shift_topic')
+    difficulty = st.selectbox('Shift difficulty', ['Automatic', 'Guided', 'Standard', 'Challenge'], key='shift_difficulty')
+    st.caption('Generation uses your confirmed skills, practice time, and previous feedback. Your experience description is not sent. Customer questions are sent to the AI service when you ask them; keep personal details out of the conversation.')
+    unfinished = bool((j['mission'].history or j['mission'].dialogue or j['draft'].strip()) and not j['attempts']) or (j['revision_started'] and len(j['attempts']) == 1)
+    if unfinished:
+        st.caption('Submit your current attempt or revision before starting another shift.')
+    if st.button('Generate a new shift', disabled=not available or unfinished, type='primary'):
+        try:
+            preferences = practice_context(j, topic, difficulty)
+            previous = [r['scenario'] for r in j.get('completed_shifts', [])] + [mission]
+            with st.spinner('Creating your next shift…'):
+                generated = generate_shift(preferences, previous)
+            start_shift(j, generated)
+        except SimulationError as exc:
+            st.error(str(exc))
+        else:
+            go('Mission')
+
+
+def customer_conversation():
+    state = j['mission']
+    st.subheader('Talk with the customer')
+    st.caption('Ask diagnostic questions in your own words. Replies adapt to your questions and progress. Only recorded observations and simulated actions determine feedback.')
+    with st.chat_message('assistant'):
+        st.write(f'{mission["customer_name"]}: {mission["customer_opening"]}')
+    for turn in state.dialogue:
+        with st.chat_message('user'):
+            st.write(turn['question'])
+        with st.chat_message('assistant'):
+            st.write(turn['reply'])
+            st.caption('Recorded observation: ' + turn['observation'])
+    with st.form('customer_question_' + mission['id'], clear_on_submit=True):
+        question = st.text_input('Ask the customer a question', max_chars=1000)
+        sent = st.form_submit_button('Ask customer', disabled=not ai_available() or len(state.dialogue) >= 40)
+    if sent:
+        try:
+            with st.spinner('The customer is responding…'):
+                ask_customer(state, mission, question)
+        except SimulationError as exc:
+            st.error(str(exc))
+        else:
+            st.rerun()
+    if not ai_available():
+        st.info('Customer chat is unavailable while the AI service is unconfigured. You can still finish using the diagnostic buttons.')
+
 with st.sidebar:
     st.title('LearningCurve')
     st.caption('A next step you can explain.')
-    for page in ['Welcome', 'Profile', 'Evidence review', 'Learning path', 'Mission', 'Feedback', 'Resources', 'Why these skills?']:
+    for page in ['Welcome', 'Profile', 'Evidence review', 'Learning path', 'Mission', 'Feedback', 'Shift history', 'Resources', 'Why these skills?']:
         disabled = page not in ('Welcome', 'Profile', 'Why these skills?') and not j['profile']
         if page == 'Feedback' and not j['attempts']:
             disabled = True
@@ -164,7 +219,7 @@ elif page == 'Evidence review':
     button('See my learning path', 'Learning path', type='primary')
 
 elif page == 'Learning path':
-    st.title('Three skills. One support shift.')
+    st.title('Three skills. Your next support shift.')
     st.caption('Priority heuristic: skills without confirmed experience come first, then posting share where an exact source label is available. This is not a readiness score.')
     evidence = confirmed(j)
     shares = {} if data['illustrative'] else skill_shares(data, career['skills'])
@@ -187,22 +242,36 @@ elif page == 'Learning path':
                 st.caption('No measured exact-label demand shown here. See Why these skills? for source coverage.')
             st.write('Practice action: ' + s['activity'])
     button('Open support shift', 'Mission', type='primary')
+    with st.expander('Generate a personalized shift'):
+        new_shift_controls()
 
 elif page == 'Mission':
     st.title(mission['title'])
     st.write(mission['scenario'])
     st.caption(mission['provenance'] + ' All actions are simulated; no device settings are changed.')
+    if 'rules' in mission:
+        preferences = mission['preferences']
+        st.caption(f'{preferences["difficulty"]} · Fits your {preferences["minutes"]}-minute practice preference · AI-generated situation')
+        with st.expander('Why this shift?'):
+            st.write('Practice gaps: ' + (', '.join(preferences['practice_gaps']) or 'Build experience with your selected skills.'))
+            skill_names = {s['id']: s['name'] for s in career['skills']}
+            st.write('Skills to practice: ' + (', '.join(skill_names.get(s, s) for s in preferences['practice_skill_ids']) or 'Continue practicing your confirmed skills.'))
+    else:
+        with st.expander('Generate a personalized shift'):
+            new_shift_controls()
     locked = len(j['attempts']) == 2 or (len(j['attempts']) == 1 and not j['revision_started'])
     if locked:
         st.info('This attempt has been submitted. View feedback to use the one available revision or download your work sample.')
         button('View feedback', 'Feedback', type='primary')
     else:
         state = j['mission']
+        if 'rules' in mission:
+            customer_conversation()
         st.subheader('Investigate the ticket')
         left, right = st.columns([1, 1])
         with left:
             for key, entry in mission['evidence'].items():
-                if st.button(entry['label'], key=key, disabled=key in state.seen, use_container_width=True):
+                if st.button(entry['label'], key='evidence_' + mission.get('id', 'builtin') + '_' + key, disabled=key in state.seen, use_container_width=True):
                     perform(key)
         with right:
             st.info(mission['ai_suggestion'])
@@ -210,23 +279,26 @@ elif page == 'Mission':
                 if st.button(label, disabled=state.ai == action):
                     perform(action)
             if state.ai:
-                st.caption('The suggestion lacks evidence of a firewall block. A DNS comparison supports a narrower change; disabling protection is not justified by this ticket.')
+                st.caption('Compare the suggestion against the observations before choosing an action.' if 'rules' in mission else 'The suggestion lacks evidence of a firewall block. A DNS comparison supports a narrower change; disabling protection is not justified by this ticket.')
+            if 'rules' in mission and st.button('Reveal a hint'):
+                perform('hint')
         st.subheader('Choose an action')
         for key, label in mission['actions'].items():
-            if st.button(label, key='action_' + key):
+            if st.button(label, key='action_' + mission.get('id', 'builtin') + '_' + key):
                 perform(key)
-        if st.button('Verify portal access', type='primary'):
+        if st.button(mission['rules']['verification']['label'] if 'rules' in mission else 'Verify portal access', type='primary', key='verify_outcome'):
             perform('verify')
         if state.history:
             st.subheader('Action history')
             for n, entry in enumerate(state.history, 1):
                 st.write(f'{n}. {entry["result"]}')
         st.subheader('Explain the outcome to the customer')
-        explanation = st.text_area('What did you do, and how did you check the outcome?', value=j['draft'], max_chars=2000, height=130)
+        explanation = st.text_area('What did you do, and how did you check the outcome?', value=j['draft'], max_chars=2000, height=130,
+                                   key='explanation_' + mission.get('id', 'builtin') + ('_revision' if j['revision_started'] else '_original'))
         j['draft'] = explanation
         if st.button('Submit for feedback'):
             try:
-                attempt = assess(state, explanation)
+                attempt = assess(state, explanation, mission)
                 j['attempts'].append(attempt)
                 go('Feedback')
             except ValueError as exc:
@@ -237,7 +309,7 @@ elif page == 'Feedback':
     attempt = j['attempts'][-1]
     st.caption('Only this exercise is assessed. No hiring or professional-competence score is generated.')
     with st.expander('Visible exercise rubric'):
-        for criterion, rule in RUBRIC.items():
+        for criterion, rule in rubric_for(mission).items():
             st.write(f'**{criterion}:** {rule}')
     for criterion, passed in attempt['criteria'].items():
         st.write(f'{"✓" if passed else "○"} **{criterion}:** {"Observed" if passed else "Not yet demonstrated"}')
@@ -255,6 +327,10 @@ elif page == 'Feedback':
     for criterion, passed in attempt['writing'].items():
         st.write(f'{criterion}: {"Phrase detected" if passed else "Not detected"}')
     st.text(attempt['explanation'])
+    if 'rules' in mission:
+        with st.expander('The cause and supporting reasoning'):
+            st.write(mission['ground_truth'])
+            st.write(mission['rules']['colleague']['critique'])
     if len(j['attempts']) == 1 and not j['revision_started']:
         if st.button('Revise once — replay the shift', type='primary'):
             begin_revision(j)
@@ -270,6 +346,27 @@ elif page == 'Feedback':
     button('Choose my next activity', 'Resources')
     st.download_button('Download simulated work sample', work_sample(j, career, mission, selected_resources(), data['source']),
                        file_name='learningcurve-work-sample.md', mime='text/markdown')
+    st.divider()
+    new_shift_controls()
+
+elif page == 'Shift history':
+    st.title('Your practice shifts')
+    records = shift_records(j, mission)
+    if not records:
+        st.info('Complete a shift to see your feedback here.')
+    for index, record in enumerate(records, 1):
+        with st.expander(f'{index}. {record["scenario"]["title"]}', expanded=index == len(records)):
+            st.write(record['scenario']['scenario'])
+            st.caption(record['scenario']['provenance'])
+            for number, attempt in enumerate(record['attempts'], 1):
+                st.write(f'Attempt {number}')
+                for criterion, passed in attempt['criteria'].items():
+                    st.write(f'{criterion}: {"Observed" if passed else "Not yet demonstrated"}')
+                st.text(attempt['explanation'])
+                st.write('One improvement: ' + attempt['improvement'])
+    if records:
+        st.download_button('Download all shift work samples', work_sample(j, career, mission, selected_resources(), data['source']),
+                           file_name='learningcurve-work-sample.md', mime='text/markdown')
 
 elif page == 'Resources':
     st.title('Leave with one practical next step')
@@ -288,7 +385,7 @@ elif page == 'Resources':
     notes = st.text_area('Practice notes', value=j['resource_notes'], max_chars=3000)
     j['resource_notes'] = notes
     st.download_button('Download practice notes', notes, file_name='learningcurve-practice-notes.txt')
-    if j['attempts']:
+    if j['attempts'] or j.get('completed_shifts'):
         st.download_button('Download simulated work sample', work_sample(j, career, mission, selected_resources(), data['source']),
                            file_name='learningcurve-work-sample.md', mime='text/markdown')
     else:
