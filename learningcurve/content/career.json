@@ -1,0 +1,10 @@
+{
+  "version": "1.0",
+  "title": "IT Support / Computer User Support Specialists",
+  "onet": "15-1232.00",
+  "skills": [
+    {"id": "troubleshooting", "name": "Troubleshooting", "why": "Narrow the problem using observations before changing a system.", "aliases": ["troubleshot", "troubleshooting", "diagnosed a", "fixed a laptop", "fixed my laptop"], "activity": "Compare cached DNS with the approved resolver."},
+    {"id": "communication", "name": "Communication", "why": "Explain findings and next steps in language the customer can use.", "aliases": ["customer service", "customer-facing", "explained to customers", "answered customer questions", "trained new staff"], "activity": "Write an explanation of the action and verification."},
+    {"id": "technical_support", "name": "Technical support", "why": "Help someone recover access while respecting approved procedures.", "aliases": ["laptop troubleshooting", "installed software", "reset passwords", "technical support", "set up a printer"], "activity": "Choose a proportionate fix and verify access."}
+  ]
+}
