@@ -9,6 +9,12 @@ Both the repository root and this directory contain launch and dependency files.
 Both supplied launch files now expect an app Secret resource named `openai_api_key`
 and bind Streamlit to `DATABRICKS_APP_PORT`.
 
+You can deploy the entire repository using its root `app.yaml` and
+`requirements.txt`; set the app's **Source code path** to the repository root.
+The steps below describe deploying just the `learningcurve` directory instead.
+In either layout, the selected source folder must directly contain the launch
+configuration and requirements file.
+
 1. Upload this entire `learningcurve` directory into a Databricks Workspace folder or sync it through your Git folder. Keep the directory structure intact. These are Python **files**, not individual notebook cells. Only `databricks_prepare.py` is a notebook source file.
 2. Create a Databricks App using the workspace's Apps interface. Choose this `learningcurve` folder as its source, with `app.py`, `requirements.txt`, and `app.yaml` at the source root. Deploy the source. Databricks installs the requirements and runs `streamlit run app.py`.
 3. Add the `openai_api_key` Secret resource before deploying, as described below. Open the app URL and select **Try the demo**. The built-in demo itself makes no AI calls and needs no table credentials; **Generate a new shift** uses the configured AI service. Charts use the included prepared snapshot, or the clearly labeled illustrative fixture when no snapshot exists.
@@ -128,6 +134,8 @@ python -m venv .venv
 
 Production dependencies are in `requirements.txt`; pytest is development-only. The app uses supported Streamlit widgets and a native theme rather than internal CSS selectors.
 
+On **Start with what you have done**, choose **Add resume** to upload a PDF (up to 5 MB, 10 pages, and 30,000 extracted characters). The extracted text fills the editable experience field and feeds the same skill suggestions and learning path as typed experience. Review it, then select **Review skill suggestions**. Password-protected, unreadable, and image-only PDFs show an error; use a PDF with selectable text or an OCR-processed copy. Uploads are processed in memory for the current session and are not saved to disk.
+
 ## Files and architecture
 
 | File | Responsibility |
@@ -135,6 +143,7 @@ Production dependencies are in `requirements.txt`; pytest is development-only. T
 | `app.py` | Landing, profile, editable evidence, milestones, mission, feedback, resources, charts and downloads |
 | `models.py` | Content loading and per-session journey state |
 | `matching.py` | Conservative phrase matches with exact original sentence spans; user confirmations |
+| `resume.py` | In-memory PDF resume extraction and upload validation |
 | `assessment.py` | Pure simulation transitions, action rubric and revision comparison |
 | `simulation.py` | Generated scenario contract, validation, personalization and shift history |
 | `ai_simulation.py` | Responses API requests, scenario generation and grounded customer dialogue |
@@ -163,7 +172,7 @@ Cloudflare's public DNS reading page was checked on 2026-10-24. Its assigned act
 
 - Progress is session-only and does not persist across devices or server restarts. Download the work sample and optional practice notes before leaving.
 - Phrase matching misses paraphrases and cannot verify truth. Evidence confirmation is self-report. Writing feedback checks limited content only and can misread negation or context.
-- Only IT support is implemented. No accounts, uploads, job scraping, or hiring-readiness scores. Optional generated shifts and customer dialogue require an AI API key; customer replies can contain model errors.
+- Only IT support is implemented. No accounts, job scraping, or hiring-readiness scores. Resume uploads require text-based PDFs; built-in OCR is not included. Optional generated shifts and customer dialogue require an AI API key; customer replies can contain model errors.
 - Prepared data is a deployment snapshot. The actual shared-table schema and source data have not been tested in your workspace.
 - Databricks deployment must be completed in your workspace; these files do not imply a deployment already exists.
 

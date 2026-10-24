@@ -1,5 +1,15 @@
 # Validation — 2026-10-24
 
+## Main merged into simulation
+
+Combined resume-upload and dynamic-simulation suite:
+`python -m pytest learningcurve/tests -q --tb=short`: **52 passed, 2 failed**.
+Both failures are the previously documented illustrative-data assumption and
+older Streamlit AppTest stale-widget issue. Resume upload, generated shifts,
+customer dialogue, and shift-history tests passed together. Both PDF extraction
+and JSON-schema dependencies are retained, along with the Databricks AI launch
+configuration. Conflict-marker and whitespace checks passed.
+
 ## Databricks deployment preparation
 
 Added repository-root launch and requirements files and configured both deployment
