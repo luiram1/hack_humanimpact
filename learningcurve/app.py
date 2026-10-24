@@ -1,5 +1,6 @@
 """LearningCurve — run with streamlit run app.py, or deploy as a Databricks App."""
 from hashlib import sha256
+from pathlib import Path
 
 import pandas as pd
 import plotly.express as px
@@ -104,15 +105,24 @@ def customer_conversation():
         st.info('Customer chat is unavailable while the AI service is unconfigured. You can still finish using the diagnostic buttons.')
 
 with st.sidebar:
-    st.title('LearningCurve')
+    st.image(str(Path(__file__).parent / 'content' / 'learningcurve_logo.svg'), width=180)
     st.caption('A next step you can explain.')
-    for page in ['Welcome', 'Profile', 'Evidence review', 'Learning path', 'Mission', 'Feedback', 'Shift history', 'Why these skills?', 'Next steps']:
-        disabled = page not in ('Welcome', 'Profile', 'Why these skills?') and not j['profile']
-        if page == 'Feedback' and not j['attempts']:
-            disabled = True
-        if page in ('Mission', 'Feedback', 'Shift history') and not supports_simulation:
-            disabled = True
-        button(page, page, key='nav_' + page, disabled=disabled, use_container_width=True)
+    navigation = {
+        'GET STARTED': ['Welcome', 'Profile'],
+        'BUILD YOUR PATH': ['Evidence review', 'Learning path'],
+        'PRACTICE': ['Mission', 'Feedback', 'Shift history'],
+        'NEXT STEPS': ['Next steps', 'Why these skills?'],
+    }
+    for section, pages in navigation.items():
+        st.caption(section)
+        for destination in pages:
+            disabled = destination not in ('Welcome', 'Profile', 'Why these skills?') and not j['profile']
+            if destination == 'Feedback' and not j['attempts']:
+                disabled = True
+            if destination in ('Mission', 'Feedback', 'Shift history') and not supports_simulation:
+                disabled = True
+            button(destination, destination, key='nav_' + destination, disabled=disabled,
+                   use_container_width=True, type='primary' if destination == st.session_state.page else 'secondary')
     st.divider()
     st.caption('Progress lasts for this session only. It does not persist across devices or server restarts.')
     with st.expander('Reset progress'):
@@ -128,6 +138,11 @@ except (ValueError, OSError) as exc:
     st.stop()
 
 page = st.session_state.page
+journey_steps = ['Profile', 'Evidence review', 'Learning path', 'Mission', 'Feedback', 'Next steps']
+progress_page = 'Next steps' if page == 'Resources' else page
+if progress_page in journey_steps:
+    step = journey_steps.index(progress_page) + 1
+    st.progress(step / len(journey_steps), text=f'Step {step} of {len(journey_steps)} · {progress_page}')
 if page in ('Resources', 'Next steps'):
     if not j['profile']:
         go('Profile')

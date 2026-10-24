@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-labelledby="title">
+  <title id="title">LearningCurve</title>
+  <g fill="none" stroke="#0b6762" stroke-width="10" stroke-linejoin="miter">
+    <path d="M100 10 186 158H14Z" />
+  </g>
+  <text x="100" y="190" fill="#0b6762" font-family="Arial, Helvetica, sans-serif" font-size="25" text-anchor="middle">LearningCurve</text>
+</svg>
