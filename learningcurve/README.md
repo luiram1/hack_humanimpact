@@ -58,6 +58,8 @@ python -m venv .venv
 
 Production dependencies are in `requirements.txt`; pytest is development-only. The app uses supported Streamlit widgets and a native theme rather than internal CSS selectors.
 
+On **Start with what you have done**, choose **Add resume** to upload a PDF (up to 5 MB, 10 pages, and 30,000 extracted characters). The extracted text fills the editable experience field and feeds the same skill suggestions and learning path as typed experience. Review it, then select **Review skill suggestions**. Password-protected, unreadable, and image-only PDFs show an error; use a PDF with selectable text or an OCR-processed copy. Uploads are processed in memory for the current session and are not saved to disk.
+
 ## Files and architecture
 
 | File | Responsibility |
@@ -65,6 +67,7 @@ Production dependencies are in `requirements.txt`; pytest is development-only. T
 | `app.py` | Landing, profile, editable evidence, milestones, mission, feedback, resources, charts and downloads |
 | `models.py` | Content loading and per-session journey state |
 | `matching.py` | Conservative phrase matches with exact original sentence spans; user confirmations |
+| `resume.py` | In-memory PDF resume extraction and upload validation |
 | `assessment.py` | Pure simulation transitions, action rubric and revision comparison |
 | `recommendations.py` | Budget, duration and skill filtering |
 | `export.py` | Markdown work sample without the background description |
@@ -91,7 +94,7 @@ Cloudflare's public DNS reading page was checked on 2026-10-24. Its assigned act
 
 - Progress is session-only and does not persist across devices or server restarts. Download the work sample and optional practice notes before leaving.
 - Phrase matching misses paraphrases and cannot verify truth. Evidence confirmation is self-report. Writing feedback checks limited content only and can misread negation or context.
-- Only IT support is implemented. No accounts, uploads, job scraping, LLM calls, or hiring-readiness scores.
+- Only IT support is implemented. No accounts, job scraping, LLM calls, or hiring-readiness scores. Resume uploads require text-based PDFs; built-in OCR is not included.
 - Prepared data is a deployment snapshot. The actual shared-table schema and source data have not been tested in your workspace.
 - Databricks deployment must be completed in your workspace; these files do not imply a deployment already exists.
 
