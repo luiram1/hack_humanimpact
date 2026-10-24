@@ -18,6 +18,7 @@ class MissionState:
     verified: bool = False
     supported_fix: bool = False
     dialogue: list = field(default_factory=list)
+    coach_dialogue: list = field(default_factory=list)
 
 def initial_journey():
     return {'profile': {}, 'matches': [], 'decisions': {}, 'manual': [],

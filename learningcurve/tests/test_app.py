@@ -15,7 +15,10 @@ def click(app, label):
 def test_full_demo_revision_reset_and_second_session():
     app = AppTest.from_file(str(APP), default_timeout=30).run()
     assert not app.exception
-    click(app, 'Try the demo')
+    assert not any(b.label == 'Try the demo' for b in app.button)
+    click(app, 'Build my learning path')
+    app.text_area[0].set_value('I installed software and answered customer questions.').run()
+    click(app, 'Review skill suggestions')
     for radio in app.radio:
         radio.set_value('Confirm')
     app.run()
@@ -38,7 +41,8 @@ def test_full_demo_revision_reset_and_second_session():
     click(app, 'Choose my next activity')
     assert not app.exception
     click(app, 'Why these skills?')
-    assert any('ILLUSTRATIVE' in w.value for w in app.warning)
+    from data_access import load_data
+    assert any('ILLUSTRATIVE' in w.value for w in app.warning) == load_data()['illustrative']
     other = AppTest.from_file(str(APP), default_timeout=30).run()
     assert other.session_state['journey']['attempts'] == []
     app.checkbox[0].check().run()

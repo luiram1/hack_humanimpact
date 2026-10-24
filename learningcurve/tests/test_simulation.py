@@ -348,7 +348,7 @@ def test_dynamic_app_generation_chat_feedback_history_and_next_shift(raw_shift, 
     assert calls.count('customer_reply') == 1
     app = app_view(j, 'Shift history')
     assert any('The silent printer' in expander.label for expander in app.expander)
-    assert len(app.get('download_button')) == 1
+    assert len(app.get('download_button')) == 0
 
 
 def test_dynamic_app_missing_key_and_failed_generation_preserve_progress(generated_shift, monkeypatch):
