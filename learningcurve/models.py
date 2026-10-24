@@ -17,11 +17,12 @@ class MissionState:
     resolved: bool = False
     verified: bool = False
     supported_fix: bool = False
+    dialogue: list = field(default_factory=list)
 
 def initial_journey():
     return {'profile': {}, 'matches': [], 'decisions': {}, 'manual': [],
             'mission': MissionState(), 'attempts': [], 'revision_started': False,
-            'draft': '', 'resource_notes': ''}
+            'draft': '', 'resource_notes': '', 'active_scenario': None, 'completed_shifts': []}
 
 def begin_revision(journey):
     if len(journey['attempts']) != 1 or journey['revision_started']:
