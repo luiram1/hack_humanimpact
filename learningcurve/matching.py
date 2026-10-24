@@ -1,10 +1,12 @@
 """Conservative phrase suggestions, never proficiency verification."""
 import re
 
+MAX_EXPERIENCE_CHARS = 30_000
+
 def suggest(text, skills):
-    if len(text) > 3000:
-        raise ValueError('Experience must be at most 3,000 characters.')
-    sentences = [m.group(0).strip() for m in re.finditer(r'[^.!?\n]+(?:[.!?]+|$)', text)]
+    if len(text) > MAX_EXPERIENCE_CHARS:
+        raise ValueError('Experience must be at most 30,000 characters.')
+    sentences = [m.group(0).strip() for m in re.finditer(r'[^.!?\n]+(?:[.!?]+|(?=\n|$))', text)]
     result = []
     for skill in skills:
         for sentence in sentences:

@@ -1,9 +1,12 @@
 """LearningCurve — run with streamlit run app.py, or deploy as a Databricks App."""
+from hashlib import sha256
+
 import pandas as pd
 import plotly.express as px
 import streamlit as st
 from models import content, initial_journey, begin_revision
-from matching import suggest, confirmed, prioritize
+from matching import suggest, confirmed, prioritize, MAX_EXPERIENCE_CHARS
+from resume import extract_resume
 from assessment import interact, assess, differences, RUBRIC
 from recommendations import recommend
 from data_access import load_data, skill_shares, LIMITATIONS
@@ -89,7 +92,29 @@ elif page == 'Profile':
     # Persist drafts outside widget state, which Streamlit removes when navigating away.
     if 'experience_draft' not in j:
         j['experience_draft'] = profile.get('experience', '')
-    experience = st.text_area('Describe your experience', value=j['experience_draft'], max_chars=3000, height=180)
+    if 'profile_experience' not in st.session_state:
+        st.session_state['profile_experience'] = j['experience_draft']
+    if st.button('Add resume'):
+        j['resume_upload_open'] = True
+    if j.get('resume_upload_open'):
+        uploaded = st.file_uploader('Upload your resume (PDF)', type=['pdf'], key='resume_upload',
+                                    help='Up to 5 MB and 10 pages. Use a PDF with selectable text.')
+        st.caption('Resume text fills in your experience below and is used for your skill suggestions and learning path. It stays in this session; the file is not saved to disk.')
+        if uploaded is not None:
+            resume_data = uploaded.getvalue()
+            digest = sha256(resume_data).hexdigest()
+            if digest != j.get('resume_digest'):
+                try:
+                    resume_text = extract_resume(resume_data)
+                except ValueError as exc:
+                    st.error(str(exc))
+                else:
+                    j['experience_draft'] = resume_text
+                    st.session_state['profile_experience'] = resume_text
+                    j['resume_digest'] = digest
+                    st.success('Resume added. Review or edit the extracted experience below, then continue.')
+    experience = st.text_area('Describe your experience', key='profile_experience',
+                              max_chars=MAX_EXPERIENCE_CHARS, height=180)
     j['experience_draft'] = experience
     time_value = j.get('time_draft', profile.get('minutes', 30))
     minutes = st.select_slider('Available practice time (minutes)', [15, 30, 60], value=time_value)
