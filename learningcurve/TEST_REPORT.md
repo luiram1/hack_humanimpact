@@ -1,5 +1,19 @@
 # Validation — 2026-10-24
 
+## Databricks deployment preparation
+
+Added repository-root launch and requirements files and configured both deployment
+layouts to use the Databricks-assigned port and the `openai_api_key` app Secret
+resource. Parsed both manifests as YAML and checked their command targets, secret
+bindings, and dependency paths. Both entry points executed successfully through
+Streamlit AppTest using Streamlit's bootstrap import setup. The dynamic-simulation
+suite passed again: **32 passed**. `git diff --check` passed.
+
+These are local readiness checks, not a live Databricks deployment. Workspace secret
+permissions, outbound network access, dependency installation in Databricks, and live
+AI requests still require verification in the user's workspace. The root README now
+includes the exact deployment and manual test steps.
+
 ## Dynamic simulation update
 
 Tested on macOS with Python 3.9.6, Streamlit 1.50.0 and the available local

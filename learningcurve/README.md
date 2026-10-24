@@ -4,9 +4,14 @@ A complete Streamlit career-practice application for IT support. The existing St
 
 ## Start in Databricks
 
+For GitHub deployments, follow the [Databricks testing walkthrough](../README.md#test-on-databricks).
+Both the repository root and this directory contain launch and dependency files.
+Both supplied launch files now expect an app Secret resource named `openai_api_key`
+and bind Streamlit to `DATABRICKS_APP_PORT`.
+
 1. Upload this entire `learningcurve` directory into a Databricks Workspace folder or sync it through your Git folder. Keep the directory structure intact. These are Python **files**, not individual notebook cells. Only `databricks_prepare.py` is a notebook source file.
 2. Create a Databricks App using the workspace's Apps interface. Choose this `learningcurve` folder as its source, with `app.py`, `requirements.txt`, and `app.yaml` at the source root. Deploy the source. Databricks installs the requirements and runs `streamlit run app.py`.
-3. Open the app URL and select **Try the demo**. It runs without table credentials or external AI services. Until you prepare real data, every evidence chart is explicitly illustrative.
+3. Add the `openai_api_key` Secret resource before deploying, as described below. Open the app URL and select **Try the demo**. The built-in demo itself makes no AI calls and needs no table credentials; **Generate a new shift** uses the configured AI service. Charts use the included prepared snapshot, or the clearly labeled illustrative fixture when no snapshot exists.
 4. Keep app access restricted to the intended workspace users. No public deployment has been performed by this project.
 
 Databricks Apps runs a web application, separately from notebook compute. Pasting `app.py` into a notebook does not launch the intended UI. Apps availability depends on workspace features and permissions; if your workspace does not offer Apps, ask the workspace administrator about availability or run locally using the instructions below.
@@ -56,8 +61,8 @@ bind a secret resource to `OPENAI_API_KEY` in the app environment, then redeploy
 administrator must allow outbound access to `https://api.openai.com/v1/responses`.
 
 For Databricks, add a **Secret** resource to the app pointing to your stored API key,
-give that resource the key `openai_api_key`, then add this optional block below the
-existing `command` in the deployed `app.yaml`:
+give that resource the key `openai_api_key`, and grant **Can read**. The supplied
+root and nested `app.yaml` files already contain this block:
 
 ```yaml
 env:
@@ -68,7 +73,8 @@ env:
 ```
 
 Use the same resource key in the app and `valueFrom`. Add the resource before
-deploying that configuration; keep the block absent for the built-in-only app.
+deploying that configuration. For a built-in-only Databricks deployment, remove the
+`OPENAI_API_KEY` entry from the selected launch file so no Secret resource is required.
 See [Databricks secret resources](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/secrets).
 
 From **Learning path**, expand **Generate a personalized shift**. Choose a topic and
