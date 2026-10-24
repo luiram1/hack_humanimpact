@@ -55,9 +55,12 @@ with st.sidebar:
 
 try:
     data = load_data()
-except (ValueError, OSError) as exc:
-    st.error(f'Cannot read prepared data: {exc}. Fix or regenerate data/prepared/evidence.json; invalid data is never replaced silently.')
+except Exception as exc:
+    st.error(f'Cannot load app data: {exc}. Check the Databricks warehouse resource and table permissions, or regenerate data/prepared/evidence.json when live access is not configured.')
     st.stop()
+
+if data.get('live'):
+    st.caption('Data source: live Databricks query · Computer User Support Specialists · Massachusetts')
 
 page = st.session_state.page
 if page == 'Welcome':

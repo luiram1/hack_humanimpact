@@ -33,3 +33,8 @@ def test_invalid_prepared_data_never_silently_falls_back(tmp_path):
     (tmp_path / 'evidence.json').write_text('{}')
     with pytest.raises(ValueError):
         load_data(tmp_path)
+
+def test_live_warehouse_resource_selects_live_loader(monkeypatch):
+    monkeypatch.setenv('DATABRICKS_WAREHOUSE_ID', 'warehouse-id')
+    monkeypatch.setattr('data_access.load_live_data', lambda warehouse_id: {'live': warehouse_id})
+    assert load_data()['live'] == 'warehouse-id'

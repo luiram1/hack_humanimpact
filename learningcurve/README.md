@@ -21,6 +21,8 @@ Official deployment reference: https://docs.databricks.com/aws/en/dev-tools/data
 
 ## Connect your existing shared data
 
+For live queries, add the SQL warehouse as an app resource in the Databricks Apps UI. Use the resource key `warehouse` to match `app.yaml`, and grant the app service principal **CAN USE** on the warehouse plus **SELECT** on both source tables. The app uses the managed `DATABRICKS_HOST` and OAuth credentials; no token is stored in the repository. The confirmed warehouse HTTP path is `/sql/1.0/warehouses/6ec9979a26a1d1d3`. When the resource is attached, the app queries the source tables; without it, the app uses the bundled snapshot (or the illustrative fixture if no snapshot exists).
+
 Your known catalog is `thebuilders_luis`, and schema is `oct26_humanedgestudio`. Actual table names and schemas have not yet been supplied. The preparation notebook discovers table names; it does not guess them.
 
 1. Import `databricks_prepare.py` as a Python notebook (or copy its COMMAND-separated sections into separate cells). Attach serverless notebook compute or another supported compute resource.

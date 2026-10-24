@@ -1,1 +1,4 @@
 command: ["streamlit", "run", "learningcurve/app.py"]
+env:
+  - name: DATABRICKS_WAREHOUSE_ID
+    valueFrom: warehouse

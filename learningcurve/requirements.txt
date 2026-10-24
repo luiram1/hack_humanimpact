@@ -2,3 +2,5 @@ streamlit==1.66.1
 pandas==2.3.3
 plotly==6.9.0
 pypdf==6.21.2
+databricks-sql-connector>=4.0,<5
+databricks-sdk>=0.50,<1
