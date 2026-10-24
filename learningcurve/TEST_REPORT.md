@@ -1,28 +1,5 @@
 # Validation — 2026-10-24
 
-## Dynamic simulation update
-
-Tested on macOS with Python 3.9.6, Streamlit 1.50.0 and the available local
-dependencies. This differs from the project's recommended Python 3.11/3.12 and
-pinned production Streamlit version.
-
-`python -m pytest learningcurve/tests -q --tb=short`: **43 passed, 2 failed**.
-The 32 new dynamic-simulation tests pass, including the Streamlit generation,
-customer dialogue, submission, history and next-shift flow with a mocked AI service.
-Other coverage includes rule/reference validation, evidence-before-action credit,
-verification invalidation, recovery, scenario-preserving revisions, immutable archived
-attempts, multi-shift exports, session isolation, private-profile exclusion, repeat
-detection, chat limits, and safe handling of missing credentials, API errors, malformed
-responses, refusals, incomplete responses and timeouts.
-
-Both failing existing UI tests were reproduced against the unchanged `HEAD` app:
-one assumes illustrative data despite the included real prepared snapshot; the other
-hits a stale-widget error in the installed older Streamlit AppTest after navigation.
-No live AI request, model-quality evaluation, Databricks deployment, or browser visual
-test was performed for this update. AI-service tests use mocks and do not incur charges.
-
-## Original validation record
-
 Environment: Windows, Python 3.12; Streamlit 1.66.1, pandas 2.3.3, Plotly 6.9.0, pytest 9.1.1. These direct dependencies are pinned in the supplied requirement files.
 
 `python -m pytest -q`: **13 passed in 11.20 seconds**.

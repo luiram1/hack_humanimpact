@@ -43,71 +43,7 @@ Replace the uppercase arguments and verify the version and units. Required files
 
 Inspect `lc_human_edge_data_dictionary_2026_10_12.xlsx` yourself to confirm IDs, units and geography labels. Metadata and specialized LOT tables are not required or joined by this MVP. The preparation preserves available source columns, selects the latest complete profile year for skills, validates source keys, and never aggregates duplicate posting counts. 2026 must have nine months and is labeled January–September, partial year. Missing CSVs fail preparation clearly; the app can still run using the separate illustrative fixture. Invalid prepared JSON stops the app instead of substituting demo values.
 
-## Dynamic practice shifts
-
-The original DNS shift remains available without an AI service. For genuinely generated
-situations, configure `OPENAI_API_KEY` in the app server environment and optionally
-`OPENAI_MODEL` (default: `gpt-4o-mini`). The model must support the Responses API and
-strict structured outputs. Example variable names are in `.env.example`; files named
-`.env` are not loaded automatically. Keep real keys out of GitHub.
-
-Locally, set these variables in your shell before launching Streamlit. In Databricks,
-bind a secret resource to `OPENAI_API_KEY` in the app environment, then redeploy. An
-administrator must allow outbound access to `https://api.openai.com/v1/responses`.
-
-For Databricks, add a **Secret** resource to the app pointing to your stored API key,
-give that resource the key `openai_api_key`, then add this optional block below the
-existing `command` in the deployed `app.yaml`:
-
-```yaml
-env:
-  - name: OPENAI_API_KEY
-    valueFrom: openai_api_key
-  - name: OPENAI_MODEL
-    value: gpt-4o-mini
-```
-
-Use the same resource key in the app and `valueFrom`. Add the resource before
-deploying that configuration; keep the block absent for the built-in-only app.
-See [Databricks secret resources](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/secrets).
-
-From **Learning path**, expand **Generate a personalized shift**. Choose a topic and
-difficulty, then **Generate a new shift**. The service creates the customer problem,
-diagnostic observations, action choices and outcomes, hint, and writing checks; it does
-not just select from a fixed scenario library. Automatic difficulty uses confirmed
-experience and the most recent feedback. New requests include recent situations to
-discourage repetition, and exact repeated causes/facts are rejected. Semantic novelty
-is model-dependent, so similar problem types can recur.
-
-Inside a generated shift, ask the customer questions in your own words. The app maps
-questions to the scenario's observations or verification step, then generates a reply
-using that observation and the current resolution state. The recorded observation is
-shown alongside the reply. Diagnostic buttons remain available if chat fails. The
-customer does not invent new scoring rules or silently change the underlying cause;
-the same generated facts and rules stay in place for a revision.
-
-After submitting feedback, **Try a new shift** generates another situation and archives
-the previous attempts. **Shift history** and the work-sample download retain all completed
-shifts for this session. Finish an active attempt or revision before replacing it.
-Generation failures leave current progress intact; the built-in exercise is explicitly
-labeled and is never presented as newly AI-generated.
-
-Only confirmed skill IDs, practice time, selected topic/difficulty, criterion gaps, and
-recent fictional situations are sent for generation. The experience description is not
-sent. Customer questions and recent conversation are sent when you use customer chat.
-Requests use `store: false`; the app keeps no shared user-data files. Each shift allows
-up to 40 questions. Generation makes one API request; a question makes two (routing and
-reply), with 25-second timeouts per request. API charges and account limits apply.
-
-Generated structures, IDs, prerequisites, and the single resolving action are validated.
-Scoring is deterministic: evidence must precede the resolving action, verification must
-follow it, and later actions invalidate verification. Structural validation does not
-establish that every generated technical claim is correct. Scenarios and customer
-dialogue are AI-authored practice content, not expert-reviewed assessments.
-
-API format reference: [OpenAI structured outputs](https://developers.openai.com/api/docs/guides/structured-outputs).
-
-## Local setup
+## Local run and tests
 
 Use Python 3.11 or 3.12. From this directory:
 
@@ -130,8 +66,6 @@ Production dependencies are in `requirements.txt`; pytest is development-only. T
 | `models.py` | Content loading and per-session journey state |
 | `matching.py` | Conservative phrase matches with exact original sentence spans; user confirmations |
 | `assessment.py` | Pure simulation transitions, action rubric and revision comparison |
-| `simulation.py` | Generated scenario contract, validation, personalization and shift history |
-| `ai_simulation.py` | Responses API requests, scenario generation and grounded customer dialogue |
 | `recommendations.py` | Budget, duration and skill filtering |
 | `export.py` | Markdown work sample without the background description |
 | `data_access.py` | Prepared snapshot loading and interpretation rules |
@@ -143,9 +77,9 @@ Production dependencies are in `requirements.txt`; pytest is development-only. T
 | `app.yaml` | Databricks launch command |
 | `.streamlit/config.toml` | Theme and headless runtime setting |
 
-Session state contains experience, confirmation decisions, the active scenario, completed shifts, and up to two submitted attempt snapshots per shift (original plus one revision). No shared file stores user data. Navigating does not restart a simulation. The reset control asks for confirmation. Core logic is independent of Streamlit.
+Session state contains experience, confirmation decisions, simulation state, and two immutable submitted attempt snapshots (original plus one revision). No shared file stores user data. Navigating does not restart a simulation. The reset control asks for confirmation. Core logic is independent of Streamlit.
 
-The built-in scenario is original and fictional. No operating-system commands run. A successful action without prior evidence does not earn the supported-action criterion. Incorrect actions can be followed by recovery. The built-in colleague is scripted; generated shifts use an AI-authored colleague suggestion and live customer dialogue.
+The scenario is original and fictional. Reserved example domains and documentation IP addresses are used. No operating-system commands run. Refreshing the cache changes simulated state; the learner must separately test portal access. A successful action without prior scope and DNS evidence does not earn the supported-action criterion. Incorrect actions can be followed by recovery. The AI colleague is scripted, not an external model.
 
 ## Data and resource interpretation
 
@@ -157,7 +91,7 @@ Cloudflare's public DNS reading page was checked on 2026-10-24. Its assigned act
 
 - Progress is session-only and does not persist across devices or server restarts. Download the work sample and optional practice notes before leaving.
 - Phrase matching misses paraphrases and cannot verify truth. Evidence confirmation is self-report. Writing feedback checks limited content only and can misread negation or context.
-- Only IT support is implemented. No accounts, uploads, job scraping, or hiring-readiness scores. Optional generated shifts and customer dialogue require an AI API key; customer replies can contain model errors.
+- Only IT support is implemented. No accounts, uploads, job scraping, LLM calls, or hiring-readiness scores.
 - Prepared data is a deployment snapshot. The actual shared-table schema and source data have not been tested in your workspace.
 - Databricks deployment must be completed in your workspace; these files do not imply a deployment already exists.
 
