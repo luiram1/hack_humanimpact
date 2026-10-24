@@ -1,0 +1,19 @@
+{
+  "version": "illustrative-1",
+  "illustrative": true,
+  "source": "Illustrative LearningCurve data — invented values for demonstrating the interface; not Lightcast findings.",
+  "geography": "Massachusetts (illustrative)",
+  "occupation": "Computer User Support Specialists",
+  "onet": "15-1232.00",
+  "skill_year": 2025,
+  "profile": [
+    {"year": 2024, "period": "January–December", "months_covered": 12, "ma_job_postings": 1000, "ma_pct_postings_genai_skills": 1.0, "ma_confidence_flag": "Illustrative"},
+    {"year": 2025, "period": "January–December", "months_covered": 12, "ma_job_postings": 1100, "ma_pct_postings_genai_skills": 1.5, "ma_confidence_flag": "Illustrative"},
+    {"year": 2026, "period": "January–September — partial year", "months_covered": 9, "ma_job_postings": 800, "ma_pct_postings_genai_skills": 2.0, "ma_confidence_flag": "Illustrative"}
+  ],
+  "skills": [
+    {"skill_name": "Troubleshooting", "skill_type": "Illustrative", "skill_id": "troubleshooting", "pct_postings": 40, "confidence_flag": "Illustrative"},
+    {"skill_name": "Communication", "skill_type": "Illustrative", "skill_id": "communication", "pct_postings": 35, "confidence_flag": "Illustrative"},
+    {"skill_name": "Technical Support", "skill_type": "Illustrative", "skill_id": "technical_support", "pct_postings": 30, "confidence_flag": "Illustrative"}
+  ]
+}

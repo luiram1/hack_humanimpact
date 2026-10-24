@@ -1,0 +1,21 @@
+{
+  "version": "1.0",
+  "title": "Your First Support Shift",
+  "scenario": "A user can access other websites, but the company's internal support portal will not load.",
+  "provenance": "Original fictional scenario designed to practice the selected skills; not an occupational task dataset.",
+  "ground_truth": "A stale cached DNS entry on the affected device points to 192.0.2.10. The approved resolver returns 192.0.2.20. Refreshing cached DNS resolves the simulated issue.",
+  "evidence": {
+    "websites": {"label": "Ask whether other websites work", "result": "The customer can open other websites on this device."},
+    "others": {"label": "Ask whether other users are affected", "result": "A colleague can open support.example.com from another device."},
+    "browser": {"label": "Inspect the browser error", "result": "support.example.com: connection timed out. This symptom alone does not identify a cause."},
+    "dns": {"label": "Compare cached DNS and approved resolver", "result": "Fictional diagnostic log — device cache: support.example.com → 192.0.2.10; approved resolver: support.example.com → 192.0.2.20. The entries disagree."},
+    "status": {"label": "Check simulated service status", "result": "The fictional portal service reports healthy. No incident is listed; a status page alone cannot rule out a local issue."},
+    "hint": {"label": "Reveal a hint", "result": "Compare the two DNS addresses, check the scope, then choose the smallest supported change."}
+  },
+  "ai_suggestion": "Simulated AI colleague: Disable the firewall to make the portal load.",
+  "actions": {
+    "refresh": "Refresh cached DNS using the approved procedure",
+    "firewall": "Disable the firewall",
+    "password": "Reset the customer's password"
+  }
+}
