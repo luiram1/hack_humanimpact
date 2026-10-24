@@ -1,9 +1,14 @@
 # Databricks notebook source
+# /// script
+# [tool.databricks.environment]
+# environment_version = "6"
+# ///
 # Import this as a Python notebook, or paste each COMMAND section into a cell.
 # This notebook runs on notebook compute; the Streamlit app does not use Spark.
 display(spark.sql('SHOW TABLES IN thebuilders_luis.oct26_humanedgestudio'))
 
 # COMMAND ----------
+
 dbutils.widgets.text('app_folder', '', 'Absolute /Workspace/.../learningcurve folder')
 dbutils.widgets.text('profile_table', '', 'Actual occupation profile table name')
 dbutils.widgets.text('skills_table', '', 'Actual occupation skills table name')
@@ -13,41 +18,129 @@ dbutils.widgets.dropdown('percent_scale', 'UNSET', ['UNSET', 'percent', 'fractio
 dbutils.widgets.text('dataset_version', '2026-10-12', 'Dataset version (verify with source)')
 
 # COMMAND ----------
-# Set the widgets before running this cell. Do not guess table or column names.
-import re
+
+base = "thebuilders_luis.oct26_humanedgestudio"
+
+profile = spark.table(f"{base}.lc_occupation_ai_profile")
+skills = spark.table(f"{base}.lc_occupation_skills")
+
+print("PROFILE COLUMNS:", profile.columns)
+print("SKILL COLUMNS:", skills.columns)
+
+display(skills.select("geography").distinct())
+
+# COMMAND ----------
+
+base = "thebuilders_luis.oct26_humanedgestudio"
+
+rows = [
+    (name, field.name, field.dataType.simpleString())
+    for name in ["lc_occupation_ai_profile", "lc_occupation_skills"]
+    for field in spark.table(f"{base}.{name}").schema.fields
+]
+
+display(spark.createDataFrame(
+    rows, ["table_name", "column_name", "data_type"]
+))
+
+# COMMAND ----------
+
+display(spark.sql("""
+    SELECT
+        skill_name,
+        job_postings,
+        job_postings_with_skill,
+        pct_postings AS stored_value,
+        ROUND(
+            100.0 * job_postings_with_skill / job_postings, 2
+        ) AS calculated_percentage
+    FROM thebuilders_luis.oct26_humanedgestudio.lc_occupation_skills
+    WHERE geography = 'MA'
+      AND onet = '15-1232.00'
+      AND year = 2025
+      AND job_postings > 0
+      AND job_postings_with_skill > 0
+    ORDER BY skill_rank
+    LIMIT 5
+"""))
+
+# COMMAND ----------
+
+display(spark.sql("""
+    SELECT column_name, comment
+    FROM thebuilders_luis.information_schema.columns
+    WHERE table_schema = 'oct26_humanedgestudio'
+      AND table_name = 'lc_occupation_ai_profile'
+      AND column_name IN (
+          'ma_pct_postings_genai_skills',
+          'ma_pct_postings_ai_skills',
+          'ma_job_postings'
+      )
+"""))
+
+# COMMAND ----------
+
 import sys
 from pathlib import Path
 
-folder = Path(dbutils.widgets.get('app_folder'))
-if not folder.is_absolute() or not (folder / 'scripts' / 'prepare_data.py').is_file():
-    raise ValueError('Set app_folder to the absolute Workspace path containing the supplied app files.')
+folder = Path(
+    "/Workspace/Users/lramirez@g.holycross.edu/"
+    "hack_humanimpact/learningcurve"
+)
+
+if not (folder / "scripts" / "prepare_data.py").is_file():
+    raise ValueError(f"Preparation script not found inside {folder}")
+
 sys.path.insert(0, str(folder))
 from scripts.prepare_data import prepare, write_prepared
 
-def source_table(widget):
-    table = dbutils.widgets.get(widget)
-    if not re.fullmatch(r'[A-Za-z0-9_]+', table):
-        raise ValueError(f'Set {widget} to a table name from the first cell; letters, digits and underscores only.')
-    return spark.table(f'thebuilders_luis.oct26_humanedgestudio.{table}')
+base = "thebuilders_luis.oct26_humanedgestudio"
 
-profile_source = source_table('profile_table')
-skill_source = source_table('skills_table')
-print('Profile columns:', profile_source.columns)
-print('Skill columns:', skill_source.columns)
-display(skill_source.select('geography').distinct())
+profile_source = spark.table(f"{base}.lc_occupation_ai_profile")
+skill_source = spark.table(f"{base}.lc_occupation_skills")
+
+print("Profile columns:", profile_source.columns)
+print("Skill columns:", skill_source.columns)
+
+display(skill_source.select("geography").distinct())
 
 # COMMAND ----------
-# Inspect source columns and the supplied data dictionary before setting units.
+
 from pyspark.sql import functions as F
-occupation = '15-1232.00'
-profile = profile_source.where(F.col('onet') == occupation).toPandas()
-skills = skill_source.where((F.col('onet') == occupation) &
-                           (F.col('geography') == dbutils.widgets.get('geography'))).toPandas()
-result = prepare(profile, skills,
-                 skill_id_column=dbutils.widgets.get('skill_id_column'),
-                 geography=dbutils.widgets.get('geography'),
-                 percent_scale=dbutils.widgets.get('percent_scale'),
-                 version=dbutils.widgets.get('dataset_version'))
-destination = folder / 'data' / 'prepared' / 'evidence.json'
+
+occupation = "15-1232.00"
+
+# Read the selected occupation and Massachusetts skills.
+profile = profile_source.where(
+    F.col("onet") == occupation
+).toPandas()
+
+skills = skill_source.where(
+    (F.col("onet") == occupation) &
+    (F.col("geography") == "MA")
+).toPandas()
+
+# Skills percentages are verified.
+# GenAI profile percentage units are still an explicit assumption.
+result = prepare(
+    profile,
+    skills,
+    skill_id_column="skill_id",
+    geography="MA",
+    percent_scale="percent",
+    version="shared-table-snapshot; source version unverified"
+)
+
+result["source"] += (
+    " | Caution: skills percentage units verified from counts; "
+    "GenAI profile units assumed to be percentages (0–100), "
+    "not yet verified. Do not interpret the GenAI chart as "
+    "validated findings."
+)
+
+destination = folder / "data" / "prepared" / "evidence.json"
 write_prepared(result, destination)
-print(f'Prepared {destination}. Redeploy the app to include this snapshot.')
+
+print(f"Prepared: {destination}")
+print("Caution: GenAI percentage units remain unverified.")
+print("Redeploy the Databricks App to load this snapshot.")
