@@ -1,5 +1,6 @@
 """LearningCurve — run with streamlit run app.py, or deploy as a Databricks App."""
 from hashlib import sha256
+from pathlib import Path
 
 import pandas as pd
 import plotly.express as px
@@ -104,7 +105,7 @@ def customer_conversation():
         st.info('Customer chat is unavailable while the AI service is unconfigured. You can still finish using the diagnostic buttons.')
 
 with st.sidebar:
-    st.title('LearningCurve')
+    st.image(str(Path(__file__).parent / 'content' / 'learningcurve_logo.svg'), width=180)
     st.caption('A next step you can explain.')
     navigation = {
         'GET STARTED': ['Welcome', 'Profile'],
