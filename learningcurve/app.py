@@ -17,6 +17,7 @@ from datetime import datetime, time
 from zoneinfo import ZoneInfo
 from ai_simulation import ask_coach, review_explanation, suggest_experience
 from careers import catalog, career_for, switch_career, IT
+from next_steps import render as render_next_steps
 
 st.set_page_config(page_title='LearningCurve', page_icon='🌱', layout='wide')
 career = content('career')
@@ -105,7 +106,7 @@ def customer_conversation():
 with st.sidebar:
     st.title('LearningCurve')
     st.caption('A next step you can explain.')
-    for page in ['Welcome', 'Profile', 'Evidence review', 'Learning path', 'Mission', 'Feedback', 'Shift history', 'Resources', 'Why these skills?']:
+    for page in ['Welcome', 'Profile', 'Evidence review', 'Learning path', 'Mission', 'Feedback', 'Shift history', 'Why these skills?', 'Next steps']:
         disabled = page not in ('Welcome', 'Profile', 'Why these skills?') and not j['profile']
         if page == 'Feedback' and not j['attempts']:
             disabled = True
@@ -127,6 +128,11 @@ except (ValueError, OSError) as exc:
     st.stop()
 
 page = st.session_state.page
+if page in ('Resources', 'Next steps'):
+    if not j['profile']:
+        go('Profile')
+    render_next_steps(j, career, selected_resources() if is_it else [])
+    st.stop()
 if not supports_simulation and page in ('Mission', 'Feedback', 'Shift history'):
     st.info('Career-specific simulations are not available for this occupation yet. Explore its skills and add your own evidence.')
     button('Explore my learning path', 'Learning path')
@@ -137,7 +143,7 @@ if not is_it and page == 'Mission' and not j.get('active_scenario'):
     new_shift_controls()
     st.stop()
 
-if not is_it and page in ('Learning path', 'Resources', 'Why these skills?'):
+if not is_it and page in ('Learning path', 'Why these skills?'):
     entry = catalog()['occupations'][career['onet']]
     st.title(career['title'])
     st.caption('Source-based skill exploration · AI-generated workplace practice · No expert-reviewed career curriculum')
@@ -173,7 +179,7 @@ if not is_it and page in ('Learning path', 'Resources', 'Why these skills?'):
             j['resource_notes'] = st.text_area('Career reflection notes', value=j['resource_notes'], max_chars=3000)
         else:
             button('Review my evidence', 'Evidence review')
-            button('Try a reflection activity', 'Resources')
+            button('View next steps', 'Next steps')
             if supports_simulation:
                 button('Open career practice shift', 'Mission', type='primary')
     st.stop()
@@ -491,7 +497,7 @@ elif page == 'Feedback':
             st.write(change)
         with st.expander('Original attempt retained'):
             st.json(j['attempts'][0])
-    button('Choose my next activity', 'Resources')
+    button('Choose my next activity', 'Next steps')
     st.divider()
     new_shift_controls()
 
@@ -510,27 +516,6 @@ elif page == 'Shift history':
                     st.write(f'{criterion}: {"Observed" if passed else "Not yet demonstrated"}')
                 st.text(attempt['explanation'])
                 st.write('One improvement: ' + attempt['improvement'])
-
-elif page == 'Resources':
-    st.title('Leave with one practical next step')
-    st.caption(f'Activities fit within your {j["profile"]["minutes"]}-minute preference. Durations are estimates for the activity, not an entire course. Current resources are all free; no exams or certificates included.')
-    if not selected_resources():
-        st.info('No curated resources fit these preferences. Update your budget or practice time in Profile.')
-    for r in selected_resources():
-        with st.container(border=True):
-            st.subheader(r['title'])
-            st.write(f'{r["provider"]} · Estimated {r["minutes"]} minutes · {r["cost"]}')
-            st.write(r['why'])
-            st.write('Your activity: ' + r['activity'])
-            if r['url']:
-                st.link_button('Open learning material', r['url'])
-                st.caption(f'Public reading checked {r["verified"]}; access conditions can change.')
-            else:
-                st.caption('Original activity: use the notes below to practice here.')
-    notes = st.text_area('Practice notes', value=j['resource_notes'], max_chars=3000)
-    j['resource_notes'] = notes
-    if not j['attempts']:
-        button('Practice the support shift', 'Mission')
 
 elif page == 'Why these skills?':
     st.title('Why these skills?')
