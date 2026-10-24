@@ -80,6 +80,17 @@ display(spark.sql("""
 
 # COMMAND ----------
 
+display(spark.sql("""
+    SELECT DISTINCT onet, onet_name
+    FROM thebuilders_luis.oct26_humanedgestudio.lc_occupation_ai_profile
+    WHERE onet IS NOT NULL
+      AND onet_name IS NOT NULL
+      AND is_unclassified = false
+    ORDER BY onet_name
+"""))
+
+# COMMAND ----------
+
 import sys
 from pathlib import Path
 
@@ -144,3 +155,84 @@ write_prepared(result, destination)
 print(f"Prepared: {destination}")
 print("Caution: GenAI percentage units remain unverified.")
 print("Redeploy the Databricks App to load this snapshot.")
+
+# COMMAND ----------
+
+from pyspark.sql import functions as F
+
+skills = (
+    spark.table(
+        "thebuilders_luis.oct26_humanedgestudio.lc_occupation_skills"
+    )
+    .filter(
+        (F.col("geography") == "MA")
+        & (F.col("year") == 2025)
+        & (F.col("months_covered") == 12)
+        & (F.col("is_unclassified") == False)
+    )
+)
+
+fields = [
+    "skill_id", "skill_name", "skill_type", "skill_rank",
+    "pct_postings", "job_postings", "confidence_flag",
+    "year", "period", "months_covered"
+]
+
+packed = (
+    skills.groupBy("onet", "onet_name")
+    .agg(
+        F.to_json(
+            F.collect_list(F.struct(*fields))
+        ).alias("skills_json")
+    )
+    .orderBy("onet_name")
+)
+
+print("Occupations with Massachusetts skill data:", packed.count())
+display(packed)
+
+# COMMAND ----------
+
+import csv
+import io
+import zipfile
+from pathlib import Path
+
+output = Path(
+    "/Workspace/Users/lramirez@g.holycross.edu/"
+    "hack_humanimpact/learningcurve/career_data.zip"
+)
+
+occupations = (
+    spark.table(
+        "thebuilders_luis.oct26_humanedgestudio.lc_occupation_ai_profile"
+    )
+    .filter("is_unclassified = false")
+    .select("onet", "onet_name")
+    .dropna()
+    .distinct()
+    .orderBy("onet_name")
+)
+
+with zipfile.ZipFile(
+    output, "w", compression=zipfile.ZIP_DEFLATED
+) as archive:
+    for filename, dataframe in [
+        ("occupations.csv", occupations),
+        ("occupation_skills.csv", packed),
+    ]:
+        with archive.open(filename, "w") as raw:
+            with io.TextIOWrapper(
+                raw, encoding="utf-8", newline=""
+            ) as text:
+                writer = csv.writer(text)
+                writer.writerow(dataframe.columns)
+
+                count = 0
+                for row in dataframe.toLocalIterator():
+                    writer.writerow(list(row))
+                    count += 1
+
+                print(f"{filename}: {count} occupations")
+
+print(f"Saved: {output}")
