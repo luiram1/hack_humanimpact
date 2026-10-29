@@ -1,4 +1,5 @@
-# LearningCurve
+# LearningCurve 
+Won Best Undergraduate Project Award at Hack for Human Impact 2026
 
 IT support practice with experience review, optional PDF résumé input, generated simulations, customer dialogue, an AI practice assistant, criterion-level feedback, revisions, and session-local shift history.
 
